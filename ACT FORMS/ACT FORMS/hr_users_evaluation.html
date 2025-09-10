@@ -1,0 +1,465 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>HR - Users Evaluation</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+  <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+  <link href="styles.css" rel="stylesheet">
+  <style>
+    /* Make tables more compact */
+    .table-card .table {
+      margin-bottom: 0;
+      font-size: 0.875rem;
+    }
+    .table-card .table td,
+    .table-card .table th {
+      padding: 0.5rem 0.75rem;
+      vertical-align: middle;
+    }
+    .table-card .card-header {
+      padding: 0.75rem 1rem;
+    }
+    .table-card .role-badge {
+      font-size: 0.75rem;
+      padding: 0.25rem 0.5rem;
+    }
+    /* Fix modal scrolling */
+    .modal-dialog {
+      max-height: 90vh;
+      margin: 1rem auto;
+    }
+    .modal-body {
+      max-height: calc(90vh - 150px);
+      overflow-y: auto;
+    }
+    /* Page-specific table header fix: ensure sticky thead works and is compact */
+    .table-responsive { position: relative; }
+    .table-responsive table thead {
+      position: sticky; /* ensure headers stick inside the scrollable container */
+      top: 0;
+      z-index: 3;
+      background: var(--gray-100);
+    }
+    .table-responsive table thead th {
+      padding: 0.45rem 0.6rem !important; /* smaller header padding to avoid large vertical gap */
+      white-space: nowrap;
+      font-weight: 700;
+      color: #495057;
+      background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
+    }
+    /* Slightly tighter header for the employees table specifically */
+    #employeesTable thead th {
+      padding: 0.35rem 0.5rem !important;
+      font-size: 0.88rem;
+    }
+    /* Remove the extra white card background behind tables */
+    .table-card {
+      background: transparent !important;
+      box-shadow: none !important;
+    }
+    .table-card .card-body {
+      background: transparent !important;
+      padding: 0 !important;
+    }
+    .table-card .table-responsive {
+      background: transparent !important;
+      border-radius: 0 !important;
+      box-shadow: none !important;
+    }
+    /* Collapse vertical space for tables on this page so they size to their content */
+    .table-card .table-responsive {
+      max-height: none !important;
+      overflow-y: visible !important;
+      padding-top: 0.25rem !important;
+      padding-bottom: 0.25rem !important;
+    }
+  </style>
+  <!-- CSS moved to styles.css -->
+</head>
+<body>
+  <div class="toast-container position-fixed top-0 end-0 p-3"></div>
+
+  <!-- Debug panel removed -->
+
+  <header class="page-header">
+    <div class="container">
+      <div class="row align-items-center">
+        <div class="col-md-8">
+          <h1 class="mb-0 fw-bold"><i class="fas fa-users me-3"></i>HR — Users Evaluation</h1>
+          <p class="mb-0 small-muted mt-2">Three lists: Employees, Managers & HR (no inline action buttons)</p>
+        </div>
+      </div>
+    </div>
+  </header>
+
+  <main class="container mb-5">
+    <!-- Filters -->
+    <div class="filters-container mb-4">
+      <div class="filters">
+        <div class="filter-group">
+          <label class="filter-label">Filter by Role</label>
+          <select id="roleFilter" class="form-select" onchange="filterTables()">
+            <option value="All">All Roles</option>
+            <option value="Employee">Employees</option>
+            <option value="Manager">Managers</option>
+            <option value="HR">HR</option>
+          </select>
+        </div>
+        <div class="filter-group">
+          <label class="filter-label">Filter by Status</label>
+          <select id="statusFilter" class="form-select" onchange="filterTables()">
+            <option value="All">All Status</option>
+            <option value="Registered">Registered</option>
+            <option value="Validated">Validated</option>
+            <option value="Not Validated">Not Validated</option>
+          </select>
+        </div>
+        <div class="filter-group">
+          <label class="filter-label">Search</label>
+          <input type="text" id="searchInput" class="form-control" placeholder="Search by name, email, username..." onkeyup="filterTables()">
+        </div>
+      </div>
+    </div>
+
+  <div class="row g-2">
+
+      <div class="col-12">
+        <div class="card table-card">
+          <div class="card-header d-flex justify-content-between align-items-center">
+            <div>
+              <h5 class="mb-0">Employees <small class="text-muted">(<span id="empCount">0</span>)</small></h5>
+            </div>
+            <div>
+              <button class="btn btn-sm btn-outline-primary me-2" onclick="enterSelectMode('employeesTable', this)">Select</button>
+            </div>
+          </div>
+          <div class="card-body p-0">
+          <div class="table-responsive">
+            <table class="table align-middle mb-0" id="employeesTable">
+              <thead>
+                    <tr>
+                      <th>Role</th>
+                      <th>Username</th>
+                      <th>Full Name</th>
+                      <th>Email</th>
+                      <th>Phone</th>
+                      <th>Status</th>
+                    </tr>
+              </thead>
+              <tbody></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+      <div class="col-12">
+        <div class="card table-card">
+          <div class="card-header d-flex justify-content-between align-items-center">
+            <div>
+              <h5 class="mb-0">Managers & Supervisors <small class="text-muted">(<span id="mgrCount">0</span>)</small></h5>
+            </div>
+            <div>
+              <button class="btn btn-sm btn-outline-primary me-2" onclick="enterSelectMode('managersTable', this)">Select</button>
+            </div>
+          </div>
+          <div class="card-body p-0">
+          <div class="table-responsive">
+            <table class="table align-middle mb-0" id="managersTable">
+              <thead>
+                    <tr>
+                      <th>Role</th>
+                      <th>Username</th>
+                      <th>Full Name</th>
+                      <th>Email</th>
+                      <th>Phone</th>
+                      <th>Status</th>
+                    </tr>
+              </thead>
+              <tbody></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+      <div class="col-12">
+        <div class="card table-card">
+          <div class="card-header d-flex justify-content-between align-items-center">
+            <div>
+              <h5 class="mb-0">HR Team <small class="text-muted">(<span id="hrCount">0</span>)</small></h5>
+            </div>
+            <div>
+              <button class="btn btn-sm btn-outline-primary me-2" onclick="enterSelectMode('hrTable', this)">Select</button>
+            </div>
+          </div>
+          <div class="card-body p-0">
+          <div class="table-responsive">
+            <table class="table align-middle mb-0" id="hrTable">
+              <thead>
+                    <tr>
+                      <th>Role</th>
+                      <th>Username</th>
+                      <th>Full Name</th>
+                      <th>Email</th>
+                      <th>Phone</th>
+                      <th>Status</th>
+                    </tr>
+              </thead>
+              <tbody></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </div>
+  </main>
+
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+  <script src="app.js"></script>
+  <script>
+    // Run small diagnostics and print to the debug panel so user can see errors without DevTools
+    (function runDiagnostics(){
+      const out = (s) => { const el = document.getElementById('debugPre'); if (el) el.textContent += s + '\n'; };
+      try {
+        out('Running diagnostics...');
+        out('document.readyState=' + document.readyState);
+        out('app.js loaded: ' + (typeof window !== 'undefined'));
+        out('getUsers defined: ' + (typeof getUsers === 'function'));
+        if (typeof getUsers === 'function') {
+          try {
+            const users = getUsers();
+            out('getUsers() returned type: ' + Object.prototype.toString.call(users));
+            if (Array.isArray(users)) out('getUsers() length: ' + users.length);
+          } catch (e) {
+            out('getUsers() threw: ' + (e && e.message ? e.message : String(e)));
+          }
+        }
+        out('showToast defined: ' + (typeof showToast === 'function'));
+      } catch (err) {
+        const el = document.getElementById('debugPre'); if (el) el.textContent += 'Diagnostics failed: ' + (err && err.message ? err.message : String(err));
+      }
+    })();
+
+    // Capture runtime errors and unhandled rejections and print details to debug panel
+    window.addEventListener('error', function(e){
+      try{
+        const el = document.getElementById('debugPre');
+        if (!el) return;
+        el.textContent += '\n[window.error] message: ' + (e.message || '') + '\n';
+        el.textContent += ' source: ' + (e.filename || '') + ':' + (e.lineno || '') + ':' + (e.colno || '') + '\n';
+        if (e.error && e.error.stack) el.textContent += ' stack: ' + e.error.stack + '\n';
+      }catch(_){ }
+    });
+
+    window.addEventListener('unhandledrejection', function(e){
+      try{
+        const el = document.getElementById('debugPre');
+        if (!el) return;
+        el.textContent += '\n[unhandledrejection] reason: ' + (e.reason && e.reason.message ? e.reason.message : String(e.reason)) + '\n';
+        if (e.reason && e.reason.stack) el.textContent += ' stack: ' + e.reason.stack + '\n';
+      }catch(_){ }
+    });
+
+    // Populate the three tables from getUsers() in app.js
+    function populateUserTables() {
+      if (typeof getUsers !== 'function') return;
+      const users = getUsers();
+
+      const empTbody = document.querySelector('#employeesTable tbody');
+      const mgrTbody = document.querySelector('#managersTable tbody');
+      const hrTbody = document.querySelector('#hrTable tbody');
+
+      empTbody.innerHTML = '';
+      mgrTbody.innerHTML = '';
+      hrTbody.innerHTML = '';
+
+      let empCount = 0, mgrCount = 0, hrCount = 0;
+
+      users.forEach(u => {
+  const roleLabel = u.role ? (u.role.toLowerCase() === 'hr' ? 'HR' : u.role.charAt(0).toUpperCase() + u.role.slice(1)) : '';
+        // decide badge color similar to hr_all_users.html
+        let badgeClass = 'badge bg-primary';
+        if (roleLabel.toLowerCase() === 'manager') badgeClass = 'badge bg-warning';
+        if (roleLabel.toLowerCase() === 'hr') badgeClass = 'badge bg-info';
+
+        const rowHtml = `<tr>
+      <td><span class="role-badge ${badgeClass}">${roleLabel}</span></td>
+      <td>
+        <input type="checkbox" class="row-select d-none me-2" data-username="${u.username || ''}" data-role="${roleLabel}">
+        <strong>${u.username || ''}</strong>
+      </td>
+      <td>${u.name || ''}</td>
+      <td>${u.email || ''}</td>
+      <td><span class="text-dark">${u.phone || 'N/A'}</span></td>
+      <td>${u.department || ''}</td>
+    </tr>`;
+
+        if (u.role === 'employee') {
+          empTbody.insertAdjacentHTML('beforeend', rowHtml); empCount++;
+        } else if (u.role === 'hr') {
+          hrTbody.insertAdjacentHTML('beforeend', rowHtml); hrCount++;
+        } else if (u.role === 'manager' || u.role === 'supervisor') {
+          // treat supervisors as part of managers list for this view
+          mgrTbody.insertAdjacentHTML('beforeend', rowHtml); mgrCount++;
+        } else {
+          // unknown roles -> put in managers by default
+          mgrTbody.insertAdjacentHTML('beforeend', rowHtml); mgrCount++;
+        }
+      });
+
+      const empEl = document.getElementById('empCount');
+      if (empEl) empEl.textContent = empCount;
+      document.getElementById('mgrCount').textContent = mgrCount;
+      document.getElementById('hrCount').textContent = hrCount;
+    }
+
+    function filterTables() {
+      const roleFilter = document.getElementById('roleFilter').value;
+      const statusFilter = document.getElementById('statusFilter').value;
+      const searchText = document.getElementById('searchInput').value.toLowerCase();
+
+      const tables = document.querySelectorAll('table');
+      tables.forEach(table => {
+        const rows = table.querySelectorAll('tbody tr');
+          rows.forEach(row => {
+              const roleEl = row.querySelector('.role-badge');
+              const role = roleEl ? roleEl.textContent : '';
+              const text = row.textContent.toLowerCase();
+
+              const roleMatch = roleFilter === 'All' || role.toLowerCase() === roleFilter.toLowerCase();
+              const searchMatch = !searchText || text.includes(searchText);
+
+              row.style.display = (roleMatch && searchMatch) ? '' : 'none';
+            });
+      });
+    }
+
+    document.addEventListener('DOMContentLoaded', function() {
+      try {
+        populateUserTables();
+      } catch (err) {
+        console.error('populateUserTables error', err);
+        if (typeof showToast === 'function') showToast('Failed to load users: ' + (err && err.message ? err.message : ''), 'danger');
+      }
+    });
+    
+    // Selection mode state
+    let currentSelectTable = null;
+    let currentSelectButton = null;
+
+    function enterSelectMode(tableId, btn) {
+  const tbl = document.getElementById(tableId);
+  if (!tbl) { if (typeof showToast === 'function') showToast('Table not found: ' + tableId, 'warning'); return; }
+  currentSelectTable = tbl;
+  currentSelectButton = btn;
+  // show checkboxes
+  currentSelectTable.querySelectorAll('.row-select').forEach(cb => cb.classList.remove('d-none'));
+  // show floating Done button
+  showDoneButton(true);
+  btn.textContent = 'Selecting...';
+  btn.disabled = true;
+    }
+
+    function exitSelectMode() {
+      if (!currentSelectTable) return;
+      currentSelectTable.querySelectorAll('.row-select').forEach(cb => { cb.checked = false; cb.classList.add('d-none'); });
+      showDoneButton(false);
+      if (currentSelectButton) { currentSelectButton.textContent = 'Select'; currentSelectButton.disabled = false; }
+      currentSelectTable = null; currentSelectButton = null;
+    }
+
+    function showDoneButton(show) {
+      let el = document.getElementById('doneSelectBtn');
+      if (!el) {
+        el = document.createElement('button');
+        el.id = 'doneSelectBtn';
+        el.className = 'btn btn-success position-fixed';
+        el.style.right = '20px';
+        el.style.bottom = '20px';
+        el.textContent = 'Done';
+        el.addEventListener('click', openSelectionModal);
+        document.body.appendChild(el);
+      }
+      el.style.display = show ? 'block' : 'none';
+    }
+
+    function openSelectionModal() {
+      if (!currentSelectTable) return;
+      const checked = Array.from(currentSelectTable.querySelectorAll('.row-select:checked'));
+      if (checked.length === 0) { if (typeof showToast === 'function') showToast('No users selected', 'warning'); return; }
+
+      // build modal content
+      const list = checked.map(cb => ({ username: cb.dataset.username, role: cb.dataset.role }));
+      const modalBody = document.getElementById('selectionModalBody');
+      modalBody.innerHTML = '';
+
+      // top: show names with an input box each
+      const topDiv = document.createElement('div');
+      topDiv.className = 'mb-3';
+      list.forEach(item => {
+        const row = document.createElement('div');
+        row.className = 'd-flex align-items-center gap-2 mb-2';
+        const name = document.createElement('div');
+        name.textContent = item.username;
+        name.style.minWidth = '140px';
+        const input = document.createElement('input');
+        input.className = 'form-control';
+        input.value = 'Give the group name';
+        row.appendChild(name);
+        row.appendChild(input);
+        topDiv.appendChild(row);
+      });
+      modalBody.appendChild(topDiv);
+
+      // second row: dropdown for selecting employee (use list usernames as options)
+      const empSelect = document.createElement('select');
+      empSelect.className = 'form-select mb-3';
+      list.forEach(item => { const opt = document.createElement('option'); opt.value = item.username; opt.textContent = item.username; empSelect.appendChild(opt); });
+      modalBody.appendChild(document.createElement('hr'));
+      modalBody.appendChild(document.createTextNode('Choose Employee:'));
+      modalBody.appendChild(empSelect);
+
+      // third row: dropdown for selecting manager (same list for simplicity)
+      const mgrSelect = document.createElement('select');
+      mgrSelect.className = 'form-select mt-2 mb-3';
+      list.forEach(item => { const opt = document.createElement('option'); opt.value = item.username; opt.textContent = item.username; mgrSelect.appendChild(opt); });
+      modalBody.appendChild(document.createTextNode('Choose Manager:'));
+      modalBody.appendChild(mgrSelect);
+
+      // show bootstrap modal
+      const modalEl = new bootstrap.Modal(document.getElementById('selectionModal'));
+      modalEl.show();
+    }
+
+    function finalizeSelection() {
+      // placeholder: collect modal inputs and proceed
+      const modal = document.getElementById('selectionModal');
+      const inputs = modal.querySelectorAll('.form-control');
+      const values = Array.from(inputs).map(i => i.value);
+      if (typeof showToast === 'function') showToast('Finalizing: ' + values.join(', '), 'success');
+      // close modal and exit select mode
+      bootstrap.Modal.getInstance(modal).hide();
+      exitSelectMode();
+    }
+
+  </script>
+  <!-- Selection Modal -->
+  <div class="modal fade" id="selectionModal" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h5 class="modal-title">Selected Users</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+        </div>
+        <div class="modal-body" id="selectionModalBody">
+          <!-- populated dynamically -->
+        </div>
+        <div class="modal-footer">
+          <button class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+          <button class="btn btn-primary" onclick="finalizeSelection()">Done</button>
+        </div>
+      </div>
+    </div>
+  </div>
+</body>
+</html>

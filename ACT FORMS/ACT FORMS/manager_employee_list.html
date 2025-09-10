@@ -1,0 +1,514 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Employee List - Supervisor Dashboard</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <link href="styles.css" rel="stylesheet">
+</head>
+<body>
+    <nav class="navbar navbar-expand-lg">
+        <div class="container-fluid">
+            <a class="navbar-brand" href="#">
+                <i class="fas fa-chart-line me-2"></i>ACT Performance System
+            </a>
+            <div class="ms-auto d-flex align-items-center">
+                <span class="me-3 fw-bold" id="currentUser"></span>
+                <button class="btn btn-outline-danger" onclick="logout()">
+                    <i class="fas fa-sign-out-alt me-1"></i>Logout
+                </button>
+            </div>
+        </div>
+    </nav>
+
+    <div class="container mt-4">
+        <div class="row">
+            <div class="col-12">
+                <div class="card">
+                    <div class="card-header d-flex justify-content-between align-items-center">
+                        <h4 class="mb-0">
+                            <i class="fas fa-users me-2"></i>
+                            <span id="pageTitle">All Employees</span>
+                        </h4>
+                        <button class="btn btn-outline-secondary" onclick="goBack()">
+                            <i class="fas fa-arrow-left me-2"></i>
+                            <span id="backButton">Back to Dashboard</span>
+                        </button>
+                    </div>
+                    <div class="card-body">
+                        <div class="row mb-3">
+                            <div class="col-md-6">
+                                <div class="input-group">
+                                    <span class="input-group-text">
+                                        <i class="fas fa-search"></i>
+                                    </span>
+                                    <input type="text" class="form-control" id="searchInput" 
+                                        placeholder="Search employees...">
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <select class="form-select" id="statusFilter">
+                                    <option value="all" id="allStatus">All Status</option>
+                                    <option value="completed" id="completedStatus">Completed</option>
+                                    <option value="pending" id="pendingStatus">Pending</option>
+                                </select>
+                            </div>
+                        </div>
+
+                        <div class="table-responsive">
+                            <table class="table table-hover">
+                                <thead>
+                                    <tr>
+                                        <th id="nameHeader">Name</th>
+                                        <th id="departmentHeader">Department</th>
+                                        <th id="roleHeader">Role</th>
+                                        <th id="selfEvalHeader">Self Evaluation</th>
+                                        <th id="managerEvalHeader">Manager Evaluation</th>
+                                        <th id="supervisorEvalHeader">Supervisor Evaluation</th>
+                                        <th id="overallStatusHeader">Overall Status</th>
+                                        <th id="actionsHeader">Actions</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="employeesTableBody">
+                                    <!-- Employee rows will be loaded here -->
+                                </tbody>
+                            </table>
+                        </div>
+
+                        <div id="noEmployeesMessage" class="text-center py-5" style="display: none;">
+                            <i class="fas fa-users fa-3x text-muted mb-3"></i>
+                            <h5 class="text-muted" id="noEmployeesText">No employees found</h5>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Toast Container -->
+    <div class="toast-container position-fixed bottom-0 end-0 p-3"></div>
+
+        <!-- Employee Detail Modal -->
+        <div class="modal fade" id="employeeDetailModal" tabindex="-1" aria-labelledby="employeeDetailLabel" aria-hidden="true">
+            <div class="modal-dialog modal-dialog-centered modal-lg">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h5 class="modal-title" id="employeeDetailLabel">Employee Details</h5>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                    </div>
+                    <div class="modal-body">
+                        <div class="d-flex align-items-center mb-3">
+                            <div class="avatar bg-primary text-white rounded-circle me-3 d-flex align-items-center justify-content-center" style="width:60px;height:60px;font-size:24px;">
+                                <span id="empAvatar">A</span>
+                            </div>
+                            <div>
+                                <h5 id="empName" class="mb-0">Employee Name</h5>
+                                <small class="text-muted" id="empId">ID</small>
+                                <div id="empDept" class="text-muted">Department</div>
+                            </div>
+                        </div>
+
+                        <div class="row">
+                            <div class="col-md-6">
+                                <p><strong>Email:</strong> <span id="empEmail">-</span></p>
+                                <p><strong>Phone:</strong> <span id="empPhone">-</span></p>
+                            </div>
+                            <div class="col-md-6">
+                                <p><strong>Self Evaluation:</strong> <span id="empSelfStatus" class="badge bg-warning">Pending</span></p>
+                                <p><strong>Manager Evaluation:</strong> <span id="empManagerStatus" class="badge bg-warning">Pending</span></p>
+                                <p><strong>Supervisor Evaluation:</strong> <span id="empSupervisorStatus" class="badge bg-warning">Pending</span></p>
+                                <p><strong>Overall:</strong> <span id="empOverallStatus" class="badge bg-warning">Pending</span></p>
+                            </div>
+                        </div>
+
+                        <hr>
+
+                        <div id="empSelfAnswersContainer">
+                            <!-- short preview of self answers -->
+                        </div>
+
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="app.js"></script>
+    <script>
+        let currentLanguage = localStorage.getItem('currentLanguage') || 'en';
+        let allEmployees = [];
+        let filteredEmployees = [];
+
+        const translations = {
+            en: {
+                pageTitle: "All Employees",
+                backButton: "Back to Dashboard",
+                nameHeader: "Name",
+                departmentHeader: "Department",
+                roleHeader: "Role",
+                selfEvalHeader: "Self Evaluation",
+                managerEvalHeader: "Manager Evaluation",
+                supervisorEvalHeader: "Supervisor Evaluation",
+                overallStatusHeader: "Overall Status",
+                actionsHeader: "Actions",
+                allStatus: "All Status",
+                completedStatus: "Completed",
+                pendingStatus: "Pending",
+                noEmployeesText: "No employees found",
+                completed: "Completed",
+                pending: "Pending",
+                evaluateButton: "Evaluate",
+                viewButton: "View"
+            },
+            ar: {
+                pageTitle: "جميع الموظفين",
+                backButton: "رجوع للوحة الرئيسية",
+                nameHeader: "الاسم",
+                departmentHeader: "القسم",
+                roleHeader: "الدور",
+                selfEvalHeader: "التقييم الذاتي",
+                managerEvalHeader: "تقييم المدير",
+                supervisorEvalHeader: "تقييم المشرف",
+                overallStatusHeader: "الحالة العامة",
+                actionsHeader: "الإجراءات",
+                allStatus: "جميع الحالات",
+                completedStatus: "مكتمل",
+                pendingStatus: "معلق",
+                noEmployeesText: "لم يتم العثور على موظفين",
+                completed: "مكتمل",
+                pending: "معلق",
+                evaluateButton: "تقييم",
+                viewButton: "عرض"
+            }
+        };
+
+        function updateLanguage() {
+            const t = translations[currentLanguage];
+            document.getElementById('pageTitle').textContent = t.pageTitle;
+            document.getElementById('backButton').textContent = t.backButton;
+            document.getElementById('nameHeader').textContent = t.nameHeader;
+            document.getElementById('departmentHeader').textContent = t.departmentHeader;
+            document.getElementById('roleHeader').textContent = t.roleHeader;
+            document.getElementById('selfEvalHeader').textContent = t.selfEvalHeader;
+            document.getElementById('managerEvalHeader').textContent = t.managerEvalHeader;
+            document.getElementById('supervisorEvalHeader').textContent = t.supervisorEvalHeader;
+            document.getElementById('overallStatusHeader').textContent = t.overallStatusHeader;
+            document.getElementById('actionsHeader').textContent = t.actionsHeader;
+            document.getElementById('allStatus').textContent = t.allStatus;
+            document.getElementById('completedStatus').textContent = t.completedStatus;
+            document.getElementById('pendingStatus').textContent = t.pendingStatus;
+            document.getElementById('noEmployeesText').textContent = t.noEmployeesText;
+
+            if (currentLanguage === 'ar') {
+                document.body.classList.add('arabic-text');
+            } else {
+                document.body.classList.remove('arabic-text');
+            }
+        }
+
+        function loadEmployees() {
+            // Load all employees (do not filter by supervisor) so the table shows every employee.
+            // Use helper functions if available, otherwise fallback to localStorage.
+            let users = [];
+            try {
+                users = (typeof getUsers === 'function') ? getUsers() : JSON.parse(localStorage.getItem('users') || '[]');
+            } catch (e) {
+                users = JSON.parse(localStorage.getItem('users') || '[]');
+            }
+
+            const evaluationsAll = JSON.parse(localStorage.getItem('evaluations') || '[]');
+
+            allEmployees = (users || [])
+                .filter(u => u && ((u.role || '').toString().toLowerCase() === 'employee'))
+                .map(u => {
+                    // try to find an evaluation record for this user
+                    let ev = evaluationsAll.find(e => e && String(e.id) === String(u.id));
+                    if (!ev && typeof getEvaluationById === 'function') {
+                        ev = getEvaluationById(u.id) || ev;
+                    }
+
+                    return {
+                        id: u.id,
+                        name: u.name || u.id,
+                        department: u.department || '',
+                        role: u.role || 'employee',
+                        email: u.email || '',
+                        selfEvaluation: (ev && ev.selfEvaluation) || {},
+                        managerEvaluation: (ev && (ev.managerEvaluation || ev.evaluatesManager)) || {},
+                        supervisorEvaluation: (ev && ev.supervisorEvaluation) || {}
+                    };
+                });
+
+            filteredEmployees = [...allEmployees];
+            renderEmployees();
+        }
+
+        function renderEmployees() {
+            const tbody = document.getElementById('employeesTableBody');
+            const noEmployeesMessage = document.getElementById('noEmployeesMessage');
+            const t = translations[currentLanguage];
+
+            if (filteredEmployees.length === 0) {
+                tbody.innerHTML = '';
+                noEmployeesMessage.style.display = 'block';
+                return;
+            }
+
+            noEmployeesMessage.style.display = 'none';
+            tbody.innerHTML = '';
+
+            filteredEmployees.forEach(employee => {
+                const selfEvalStatus = employee.selfEvaluation?.completed ? t.completed : t.pending;
+                const managerEvalStatus = employee.managerEvaluation?.completed ? t.completed : t.pending;
+                const supervisorEvalStatus = employee.supervisorEvaluation?.completed ? t.completed : t.pending;
+                const overallStatus = (employee.selfEvaluation?.completed && 
+                                    employee.managerEvaluation?.completed && 
+                                    employee.supervisorEvaluation?.completed) ? t.completed : t.pending;
+                
+                const roleIcon = employee.role === 'manager' ? 'fa-user-tie' : 'fa-user';
+                const roleColor = employee.role === 'manager' ? 'bg-warning' : 'bg-primary';
+                
+                const row = `
+                    <tr>
+                        <td>
+                            <div class="d-flex align-items-center">
+                                <div class="avatar ${roleColor} text-white rounded-circle me-3 d-flex align-items-center justify-content-center" style="width: 40px; height: 40px;">
+                                    <i class="fas ${roleIcon}"></i>
+                                </div>
+                                <div>
+                                    <div class="fw-bold">${employee.name}</div>
+                                    <small class="text-muted">${employee.id}</small>
+                                </div>
+                            </div>
+                        </td>
+                        <td>${employee.department}</td>
+                        <td>
+                            <span class="badge ${roleColor}">
+                                ${employee.role.charAt(0).toUpperCase() + employee.role.slice(1)}
+                            </span>
+                        </td>
+                        <td>
+                            <span class="badge ${employee.selfEvaluation?.completed ? 'bg-success' : 'bg-warning'}">
+                                ${selfEvalStatus}
+                            </span>
+                        </td>
+                        <td>
+                            <span class="badge ${employee.managerEvaluation?.completed ? 'bg-success' : 'bg-warning'}">
+                                ${managerEvalStatus}
+                            </span>
+                        </td>
+                        <td>
+                            <span class="badge ${employee.supervisorEvaluation?.completed ? 'bg-success' : 'bg-warning'}">
+                                ${supervisorEvalStatus}
+                            </span>
+                        </td>
+                        <td>
+                            <span class="badge ${overallStatus === t.completed ? 'bg-success' : 'bg-warning'}">
+                                ${overallStatus}
+                            </span>
+                        </td>
+                        <td>
+                            <button class="btn btn-sm btn-primary me-2" onclick="startManagerEmployeeEvaluation('${employee.id}')">
+                                <i class="fas fa-edit me-1"></i>
+                                ${t.evaluateButton}
+                            </button>
+                            <button class="btn btn-sm btn-outline-info" onclick="viewEmployeeDetails('${employee.id}')">
+                                <i class="fas fa-eye me-1"></i>
+                                ${t.viewButton}
+                            </button>
+                        </td>
+                    </tr>
+                `;
+                tbody.insertAdjacentHTML('beforeend', row);
+            });
+        }
+
+        function filterEmployees() {
+            const searchTerm = document.getElementById('searchInput').value.toLowerCase();
+            const statusFilter = document.getElementById('statusFilter').value;
+
+            filteredEmployees = allEmployees.filter(employee => {
+                const matchesSearch = employee.name.toLowerCase().includes(searchTerm) ||
+                                    employee.department.toLowerCase().includes(searchTerm) ||
+                                    employee.id.toLowerCase().includes(searchTerm) ||
+                                    employee.role.toLowerCase().includes(searchTerm);
+                
+                let matchesStatus = true;
+                if (statusFilter === 'completed') {
+                    matchesStatus = employee.selfEvaluation?.completed && 
+                                  employee.managerEvaluation?.completed && 
+                                  employee.supervisorEvaluation?.completed;
+                } else if (statusFilter === 'pending') {
+                    matchesStatus = !(employee.selfEvaluation?.completed && 
+                                    employee.managerEvaluation?.completed && 
+                                    employee.supervisorEvaluation?.completed);
+                }
+
+                return matchesSearch && matchesStatus;
+            });
+
+            renderEmployees();
+        }
+
+        function viewEmployeeDetails(employeeId) {
+            // Always resolve canonical evaluation by id first
+            const evaluationsAll = JSON.parse(localStorage.getItem('evaluations') || '[]');
+            let evalRecord = evaluationsAll.find(ev => ev && String(ev.id) === String(employeeId));
+
+            // fallback to helper functions
+            if (!evalRecord && typeof getEvaluationById === 'function') {
+                evalRecord = getEvaluationById(employeeId) || evalRecord;
+            }
+
+            // fallback to users
+            let userRecord = null;
+            if (!evalRecord) {
+                try { userRecord = getUserById(employeeId); } catch (e) { userRecord = null; }
+            } else {
+                // if we have evalRecord but missing name/email, try to fill from users
+                userRecord = getUserById(evalRecord.id) || null;
+            }
+
+            // also try transient stored self answers
+            let transient = null;
+            try {
+                const tkey = localStorage.getItem('employee_self_answers_' + employeeId) || localStorage.getItem('employee_self_answers');
+                if (tkey) {
+                    try { transient = JSON.parse(tkey); } catch (e) { transient = null; }
+                }
+            } catch (e) { transient = null; }
+
+            // Build an employee object to display
+            const employee = {
+                id: (evalRecord && evalRecord.id) || (userRecord && userRecord.id) || employeeId,
+                name: (evalRecord && evalRecord.name) || (userRecord && userRecord.name) || employeeId,
+                department: (evalRecord && evalRecord.department) || (userRecord && userRecord.department) || '',
+                email: (evalRecord && evalRecord.email) || (userRecord && userRecord.email) || '',
+                phone: (userRecord && userRecord.phone) || (evalRecord && evalRecord.phone) || '',
+                selfEvaluation: (evalRecord && evalRecord.selfEvaluation) || (transient && (transient.answers ? { answers: transient.answers, comments: transient.comments, reason: transient.reason, completed: !!transient.completed } : transient)) || {},
+                managerEvaluation: (evalRecord && (evalRecord.managerEvaluation || evalRecord.evaluatesManager)) || {},
+                supervisorEvaluation: (evalRecord && evalRecord.supervisorEvaluation) || {}
+            };
+
+            if (!employee) {
+                showToast('Employee not found', 'warning');
+                return;
+            }
+
+            // populate modal fields
+            document.getElementById('empAvatar').textContent = employee.name ? employee.name.charAt(0).toUpperCase() : '-';
+            document.getElementById('empName').textContent = employee.name || '-';
+            document.getElementById('empId').textContent = employee.id || '-';
+            document.getElementById('empDept').textContent = employee.department || '-';
+            document.getElementById('empEmail').textContent = employee.email || '-';
+            document.getElementById('empPhone').textContent = employee.phone || '-';
+
+            const t = translations[currentLanguage];
+
+            const selfDone = !!(employee.selfEvaluation && employee.selfEvaluation.completed);
+            const mgrDone = !!(employee.managerEvaluation && employee.managerEvaluation.completed);
+            const supDone = !!(employee.supervisorEvaluation && employee.supervisorEvaluation.completed);
+            const overallDone = selfDone && mgrDone && supDone;
+
+            const selfStatusEl = document.getElementById('empSelfStatus');
+            const mgrStatusEl = document.getElementById('empManagerStatus');
+            const supStatusEl = document.getElementById('empSupervisorStatus');
+            const overallEl = document.getElementById('empOverallStatus');
+
+            selfStatusEl.textContent = selfDone ? t.completed : t.pending;
+            mgrStatusEl.textContent = mgrDone ? t.completed : t.pending;
+            supStatusEl.textContent = supDone ? t.completed : t.pending;
+            overallEl.textContent = overallDone ? t.completed : t.pending;
+
+            selfStatusEl.className = 'badge ' + (selfDone ? 'bg-success' : 'bg-warning');
+            mgrStatusEl.className = 'badge ' + (mgrDone ? 'bg-success' : 'bg-warning');
+            supStatusEl.className = 'badge ' + (supDone ? 'bg-success' : 'bg-warning');
+            overallEl.className = 'badge ' + (overallDone ? 'bg-success' : 'bg-warning');
+
+            // full rendering of self answers (answers, comments, reason)
+            const previewContainer = document.getElementById('empSelfAnswersContainer');
+            previewContainer.innerHTML = '';
+            const se = employee.selfEvaluation || {};
+            const answers = se.answers || {};
+            const comments = se.comments || {};
+            const keys = Object.keys(answers).filter(k => k.startsWith('answer')).sort((a,b)=>{
+                const ai = parseInt(a.replace('answer','')) || 0;
+                const bi = parseInt(b.replace('answer','')) || 0;
+                return ai - bi;
+            });
+
+            if (keys.length) {
+                const list = document.createElement('div');
+                list.innerHTML = '<h6>' + (currentLanguage === 'ar' ? 'إجابات التقييم الذاتي' : 'Self Evaluation Answers') + '</h6>';
+                keys.forEach(k => {
+                    const idx = k.replace('answer','');
+                    const text = answers[k] || '';
+                    const comment = comments['comment' + idx] || '';
+                    const item = document.createElement('div');
+                    item.className = 'mb-2';
+                    item.innerHTML = `<small class="text-muted">Q${parseInt(idx)+1}:</small> <div>${text}</div>` + (comment ? `<div class="text-muted small">${currentLanguage === 'ar' ? 'تعليق:' : 'Comment:'} ${comment}</div>` : '');
+                    list.appendChild(item);
+                });
+                if (se.reason) {
+                    const r = document.createElement('div');
+                    r.className = 'mt-3';
+                    r.innerHTML = `<strong>${currentLanguage === 'ar' ? 'السبب العام:' : 'Overall Reason:'}</strong><div>${se.reason}</div>`;
+                    list.appendChild(r);
+                }
+                previewContainer.appendChild(list);
+            } else if (se && (se.reason || (transient && (transient.reason)))) {
+                const div = document.createElement('div');
+                div.className = 'text-muted';
+                div.innerHTML = `<strong>${currentLanguage === 'ar' ? 'السبب العام:' : 'Overall Reason:'}</strong><div>${se.reason || (transient && transient.reason) || ''}</div>`;
+                previewContainer.appendChild(div);
+            } else {
+                previewContainer.innerHTML = '<div class="text-muted">' + (currentLanguage === 'ar' ? 'لا توجد إجابات للتقييم الذاتي' : 'No self evaluation answers yet') + '</div>';
+            }
+
+            // show modal
+            const modalEl = document.getElementById('employeeDetailModal');
+            const modal = new bootstrap.Modal(modalEl);
+            modal.show();
+        }
+
+        function goBack() {
+            window.location.href = 'manager_home_page.html';
+        }
+
+        function startSupervisorEmployeeEvaluation(employeeId) {
+            localStorage.setItem('evaluationType', 'supervisor');
+            localStorage.setItem('evaluationTarget', employeeId);
+            window.location.href = 'supervisor_employee_evaluation.html';
+        }
+
+        function startManagerEmployeeEvaluation(employeeId) {
+            // Navigate to the manager evaluation page for this employee
+            localStorage.setItem('evaluationType', 'manager');
+            localStorage.setItem('evaluationTarget', employeeId);
+            window.location.href = 'manager_employee_evaluation.html';
+        }
+
+        // Initialize page
+        document.addEventListener('DOMContentLoaded', function() {
+            const currentUser = getCurrentUser();
+            if (!currentUser) {
+                window.location.href = 'login.html';
+                return;
+            }
+
+            document.getElementById('currentUser').textContent = currentUser.name;
+            updateLanguage();
+            loadEmployees();
+
+            // Set up event listeners
+            document.getElementById('searchInput').addEventListener('input', filterEmployees);
+            document.getElementById('statusFilter').addEventListener('change', filterEmployees);
+        });
+    </script>
+</body>
+</html>

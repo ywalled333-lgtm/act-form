@@ -1,0 +1,394 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Manager - Supervisor Evaluation - ACT Performance System</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <link href="styles.css" rel="stylesheet">
+</head>
+<body>
+    <nav class="navbar navbar-expand-lg">
+        <div class="container-fluid">
+            <a class="navbar-brand" href="#">
+                <i class="fas fa-chart-line me-2"></i>ACT Performance System
+            </a>
+            <div class="ms-auto d-flex align-items-center">
+                <span class="me-3 fw-bold" id="currentUser"></span>
+                <button class="btn btn-outline-danger" onclick="logout()">
+                    <i class="fas fa-sign-out-alt me-1"></i>Logout
+                </button>
+            </div>
+        </div>
+    </nav>
+
+    <div class="container mt-4">
+        <div class="row">
+            <div class="col-12">
+                <div class="card">
+                    <div class="card-header d-flex justify-content-between align-items-center">
+                        <div>
+                            <h4 class="mb-0">
+                                <i class="fas fa-user-check me-2"></i>
+                                <span id="evaluationTitle">Supervisor - Manager Evaluation</span>
+                            </h4>
+                            <p class="mb-0 mt-2" id="evaluationSubtitle">Please provide your evaluation for the manager</p>
+                        </div>
+                        <div class="d-flex justify-content-end">
+                            <button id="editButton" type="button" class="btn btn-warning me-2" onclick="enableEdit()">
+                                <i class="fas fa-edit me-1"></i>Edit
+                            </button>
+                            <button id="resetButton" type="button" class="btn btn-outline-danger" onclick="resetAnswers()" disabled>
+                                <i class="fas fa-undo me-1"></i>Reset
+                            </button>
+                        </div>
+                    </div>
+                    <div class="card-body">
+        <form id="evaluationForm">
+            <div id="questionsContainer">
+                                <!-- Questions will be dynamically loaded here -->
+            </div>
+
+                            <div class="mt-4">
+                                <label for="overallReason" class="form-label">
+                                    <strong id="overallReasonLabel">Overall Assessment Reason</strong>
+                        </label>
+                                <textarea class="form-control" id="overallReason" name="reason" rows="4" 
+                                    placeholder="Please provide your overall assessment and reasoning..."></textarea>
+            </div>
+
+                            <div class="mt-4 d-flex justify-content-between">
+                                <button type="button" class="btn btn-secondary" onclick="goBack()">
+                                    <i class="fas fa-arrow-left me-2"></i>
+                    <span id="backButton">Back</span>
+                </button>
+                <button type="submit" class="btn btn-primary">
+                                    <i class="fas fa-save me-2"></i>
+                    <span id="saveButton">Save Evaluation</span>
+                </button>
+            </div>
+        </form>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Toast Container -->
+    <div class="toast-container position-fixed bottom-0 end-0 p-3"></div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="app.js"></script>
+    <script>
+        // Page behaviour borrowed from supervisor_employee_evaluation but defaults to manager role
+        let currentLanguage = localStorage.getItem('currentLanguage') || 'en';
+        let evaluationType = localStorage.getItem('evaluationType');
+        let targetId = localStorage.getItem('evaluationTarget');
+
+        const availableRatingOptions = (typeof ratingOptions !== 'undefined') ? ratingOptions : (window.ratingOptions || ['Strongly Agree', 'Agree', 'Disagree', 'Strongly Disagree']);
+
+        function loadQuestions() {
+            const questionsContainer = document.getElementById('questionsContainer');
+            if (!questionsContainer) return;
+
+            try {
+                const evaluationId = String(localStorage.getItem('evaluationTarget') || '').trim();
+                const evaluations = JSON.parse(localStorage.getItem('evaluations') || '[]');
+                const users = getUsers ? getUsers() : (JSON.parse(localStorage.getItem('users') || '[]'));
+
+                let evaluation = null;
+                if (evaluationId) {
+                    evaluation = evaluations.find(e => e && e.id && String(e.id).trim().toLowerCase() === evaluationId.toLowerCase());
+                    if (!evaluation) {
+                        evaluation = evaluations.find(e => e && e.name && String(e.name).trim().toLowerCase() === evaluationId.toLowerCase());
+                    }
+                    if (!evaluation) {
+                        const userRecord = users.find(u => u && u.id && String(u.id).trim().toLowerCase() === evaluationId.toLowerCase())
+                            || users.find(u => u && u.username && String(u.username).trim().toLowerCase() === evaluationId.toLowerCase());
+                        if (userRecord) {
+                            evaluation = evaluations.find(e => e && e.id && String(e.id).trim().toLowerCase() === String(userRecord.id).trim().toLowerCase())
+                                || evaluations.find(e => e && e.name && String(e.name).trim().toLowerCase() === String(userRecord.name).trim().toLowerCase());
+                        }
+                    }
+                }
+
+                if (!evaluation && evaluationId) {
+                    const t = evaluationId.toLowerCase();
+                    evaluation = evaluations.find(e => e && e.name && String(e.name).trim().toLowerCase().includes(t));
+                }
+
+                try {
+                    const titleEl = document.getElementById('evaluationTitle');
+                    const subtitleEl = document.getElementById('evaluationSubtitle');
+                    let displayName = '';
+                    if (evaluation && evaluation.name) displayName = evaluation.name;
+                    else {
+                        const idMatch = users.find(u => u && u.id && String(u.id).trim().toLowerCase() === (evaluationId || '').toLowerCase());
+                        const unameMatch = users.find(u => u && u.username && String(u.username).trim().toLowerCase() === (evaluationId || '').toLowerCase());
+                        const userMatch = idMatch || unameMatch;
+                        if (userMatch) displayName = userMatch.name;
+                    }
+                    if (displayName) {
+                        if (titleEl) titleEl.textContent = 'Evaluation for ' + displayName;
+                        if (subtitleEl && evaluation && evaluation.department) subtitleEl.textContent = evaluation.department;
+                    }
+                } catch (e) { /* ignore */ }
+
+                const sharedQuestions = window.questions || [
+                    { en: "How effectively do you communicate with your team members and colleagues?", ar: "ما مدى فعاليتك في التواصل مع أعضاء فريقك وزملائك؟" },
+                    { en: "How well do you manage your time and prioritize tasks?", ar: "ما مدى جودة إدارتك للوقت وترتيب الأولويات؟" },
+                    { en: "How successfully do you adapt to changes in the workplace?", ar: "ما مدى نجاحك في التكيف مع التغييرات في مكان العمل؟" },
+                    { en: "How effectively do you collaborate with others on team projects?", ar: "ما مدى فعاليتك في التعاون مع الآخرين في المشاريع الجماعية؟" },
+                    { en: "How well do you demonstrate leadership qualities in your role?", ar: "ما مدى جودة إظهارك لصفات القيادة في دورك؟" },
+                    { en: "How effectively do you solve problems and make decisions?", ar: "ما مدى فعاليتك في حل المشكلات واتخاذ القرارات؟" },
+                    { en: "How well do you contribute to achieving organizational goals?", ar: "ما مدى جودة مساهمتك في تحقيق الأهداف التنظيمية؟" },
+                    { en: "How effectively do you handle feedback and criticism?", ar: "ما مدى فعاليتك في التعامل مع التغذية الراجعة والنقد؟" }
+                ];
+
+                const sourceQuestions = (evaluation && evaluation.evaluatesManager && Array.isArray(evaluation.evaluatesManager.questions) && evaluation.evaluatesManager.questions.length)
+                    ? evaluation.evaluatesManager.questions
+                    : sharedQuestions.map(q => ({ text: q.en }));
+
+                let savedAnswers = {};
+                function normalizeTransient(trans) {
+                    if (!trans) return null;
+                    if (trans.answers && typeof trans.answers === 'object' && Object.keys(trans.answers).length) return trans.answers;
+                    const hasKeys = Object.keys(trans).some(k => k.startsWith('answer') || k.startsWith('comment') || k === 'reason');
+                    if (hasKeys) return trans;
+                    return null;
+                }
+
+                if (evaluation && evaluation.evaluatesManager && evaluation.evaluatesManager.answers && Object.keys(evaluation.evaluatesManager.answers).length) {
+                    savedAnswers = evaluation.evaluatesManager.answers;
+                } else if (evaluation && evaluation.selfEvaluation && evaluation.selfEvaluation.answers && Object.keys(evaluation.selfEvaluation.answers).length) {
+                    savedAnswers = evaluation.selfEvaluation.answers;
+                } else if (evaluation && evaluation.supervisorEvaluation && evaluation.supervisorEvaluation.answers && Object.keys(evaluation.supervisorEvaluation.answers).length) {
+                    savedAnswers = evaluation.supervisorEvaluation.answers;
+                } else {
+                    try {
+                        const transientKey = localStorage.getItem('employee_self_answers_' + evaluationId) || localStorage.getItem('employee_self_answers');
+                        let transient = null;
+                        if (transientKey) {
+                            try { transient = JSON.parse(transientKey); } catch (e) { transient = null; }
+                        }
+                        const normalized = normalizeTransient(transient);
+                        if (normalized) savedAnswers = normalized;
+                    } catch (e) { /* ignore */ }
+                }
+
+                function safeNormalizeComments(comments) {
+                    if (comments == null) return '';
+                    if (Array.isArray(comments)) return comments.join('\n');
+                    if (typeof comments === 'string') return comments;
+                    if (typeof comments === 'object') {
+                        try {
+                            return Object.keys(comments)
+                                .sort()
+                                .map(k => {
+                                    const v = comments[k];
+                                    if (v == null) return '';
+                                    if (typeof v === 'string') return v;
+                                    if (Array.isArray(v)) return v.join(' ');
+                                    try { return String(v); } catch (e) { return ''; }
+                                })
+                                .filter(Boolean)
+                                .join('\n');
+                        } catch (e) { return ''; }
+                    }
+                    try { return String(comments); } catch (e) { return ''; }
+                }
+
+                questionsContainer.innerHTML = '';
+
+        sourceQuestions.forEach((question, index) => {
+            const commentText = savedAnswers[`comment${index}`] ? safeNormalizeComments(savedAnswers[`comment${index}`]) : '';
+            const managerRatingValue = (evaluation && evaluation.evaluatesManager && evaluation.evaluatesManager.ratings && evaluation.evaluatesManager.ratings[`rating${index}`]) || '';
+            const supervisorRatingValue = (evaluation && evaluation.supervisorEvaluation && evaluation.supervisorEvaluation.ratings && evaluation.supervisorEvaluation.ratings[`rating${index}`]) || '';
+            const ratingValue = managerRatingValue || supervisorRatingValue || '';
+
+                        const questionHtml = `
+                            <div class="question-card mb-3">
+                                <h6 class="question-text">${index + 1}. ${question.text || question.en}</h6>
+
+                                <div class="mb-3">
+                                    <label for="rating${index}" class="form-label">Rating:</label>
+                                    <select id="rating${index}" class="form-select" name="rating${index}">
+                                        <option value="">-- Select --</option>
+                                        <option value="1">1 - Strongly Disagree</option>
+                                        <option value="2">2 - Disagree</option>
+                                        <option value="3">3 - Neutral</option>
+                                        <option value="4">4 - Agree</option>
+                                        <option value="5">5 - Strongly Agree</option>
+                                    </select>
+                                </div>
+
+                                <div class="mb-3">
+                                    <label for="comment${index}" class="form-label">Additional Comments:</label>
+                                    <textarea class="form-control" id="comment${index}" name="comment${index}" rows="2">${commentText}</textarea>
+                                </div>
+                                
+                                   <div class="mb-3">
+                                <label class="form-label">Manager Rating:</label>
+                                <div class="rating-options">
+                                    ${availableRatingOptions.map((rating, ratingIndex) => `
+                                        <div class="rating-option d-inline-block me-2">
+                                            <input type="radio" name="managerRating${index}" id="managerRating${index}_${ratingIndex}" value="${rating}" ${rating === managerRatingValue ? 'checked' : ''} disabled>
+                                            <label for="managerRating${index}_${ratingIndex}">${rating}</label>
+                                        </div>
+                                    `).join('')}
+                                </div>
+                            </div>
+                        `;
+
+                        questionsContainer.insertAdjacentHTML('beforeend', questionHtml);
+                        if (ratingValue) {
+                            const sel = document.getElementById('rating' + index);
+                            if (sel) sel.value = ratingValue;
+                        }
+                });
+
+                let overallRaw = '';
+                if (evaluation && evaluation.evaluatesManager && (evaluation.evaluatesManager.reason || evaluation.evaluatesManager.comments)) {
+                    overallRaw = evaluation.evaluatesManager.reason || evaluation.evaluatesManager.comments || '';
+                } else if (evaluation && evaluation.selfEvaluation && (evaluation.selfEvaluation.reason || evaluation.selfEvaluation.comments)) {
+                    overallRaw = evaluation.selfEvaluation.reason || evaluation.selfEvaluation.comments || '';
+                } else if (evaluation && evaluation.supervisorEvaluation && (evaluation.supervisorEvaluation.reason || evaluation.supervisorEvaluation.comments)) {
+                    overallRaw = evaluation.supervisorEvaluation.reason || evaluation.supervisorEvaluation.comments || '';
+                } else {
+                    try {
+                        const transientSelf = JSON.parse(localStorage.getItem('employee_self_answers') || 'null');
+                        if (transientSelf && transientSelf['reason']) overallRaw = transientSelf['reason'];
+                    } catch (e) { /* ignore */ }
+                }
+
+                const overallReasonTextarea = document.getElementById('overallReason');
+                if (overallReasonTextarea) {
+                    overallReasonTextarea.value = safeNormalizeComments(overallRaw);
+                }
+
+            } catch (err) {
+                console.error('Error loading questions:', err);
+                if (questionsContainer) questionsContainer.innerHTML = `<div class="alert alert-danger">Runtime error: ${err && err.message ? err.message : String(err)}</div>`;
+                if (window.showToast) showToast('Runtime error: ' + (err && err.message ? err.message : 'unknown'), 'danger');
+            }
+        }
+
+        function goBack() {
+            window.location.href = 'supervisor_manager_list.html';
+        }
+
+        let isEditing = false;
+
+        function enableEdit() {
+            // Enable only manager radio rating inputs (leave selects and comments read-only)
+            const managerRadioInputs = document.querySelectorAll('#evaluationForm input[type="radio"][name^="managerRating"]');
+            managerRadioInputs.forEach(r => r.disabled = false);
+            isEditing = true;
+            const resetBtn = document.getElementById('resetButton');
+            const editBtn = document.getElementById('editButton');
+            if (resetBtn) resetBtn.disabled = false;
+            if (editBtn) editBtn.disabled = true;
+            if (window.showToast) showToast('Edit mode enabled', 'info');
+        }
+
+        function resetAnswers() {
+            if (!isEditing) {
+                if (window.showToast) showToast('Please click Edit before resetting answers.', 'warning');
+                return;
+            }
+            const form = document.getElementById('evaluationForm');
+            if (!form) return;
+            // Clear only manager radio selections; leave selects/comments intact
+            const managerRadioInputs = document.querySelectorAll('#evaluationForm input[type="radio"][name^="managerRating"]');
+            managerRadioInputs.forEach(r => { r.checked = false; });
+            if (window.showToast) showToast('Manager answers have been reset', 'warning');
+        }
+
+        function saveSupervisorManagerEvaluation() {
+            const form = document.getElementById('evaluationForm');
+            if (!form) return;
+            const answers = {};
+            const comments = {};
+            const ratings = {};
+
+            const questionCards = document.querySelectorAll('.question-card');
+            const n = questionCards.length;
+            for (let i = 0; i < n; i++) {
+                const c = document.getElementById('comment' + i);
+                const sel = document.getElementById('rating' + i);
+                answers['answer' + i] = '';
+                comments['comment' + i] = c ? c.value : '';
+                ratings['rating' + i] = sel ? sel.value : null;
+            }
+
+            const overall = document.getElementById('overallReason');
+            const reason = overall ? overall.value : '';
+
+            try {
+                let evaluations = JSON.parse(localStorage.getItem('evaluations') || '[]');
+                let managerEval = evaluations.find(e => String(e.id) === String(targetId));
+                if (!managerEval) {
+                    const user = getUserById(targetId) || {};
+                    managerEval = { id: targetId, name: user.name || '', email: user.email || '', department: user.department || '', role: user.role || 'manager' };
+                    evaluations.push(managerEval);
+                }
+
+                managerEval.supervisorEvaluation = managerEval.supervisorEvaluation || {};
+                managerEval.supervisorEvaluation.completed = true;
+                managerEval.supervisorEvaluation.answers = answers;
+                managerEval.supervisorEvaluation.comments = comments;
+                managerEval.supervisorEvaluation.ratings = ratings;
+                managerEval.supervisorEvaluation.reason = reason || (managerEval.supervisorEvaluation.reason || '');
+                managerEval.supervisorEvaluation.evaluatorId = (getCurrentUser() && getCurrentUser().id) || null;
+                managerEval.supervisorEvaluation.date = new Date().toISOString();
+
+                localStorage.setItem('evaluations', JSON.stringify(evaluations));
+            } catch (e) {
+                console.error('Failed to persist supervisor manager evaluation', e);
+            }
+
+            if (window.showToast) showToast('Supervisor evaluation saved successfully!', 'success');
+            setTimeout(() => {
+                window.location.href = 'maneger_supervisor_list.html';
+            }, 800);
+        }
+
+        document.addEventListener('DOMContentLoaded', function() {
+            setTimeout(() => {
+                const currentUser = getCurrentUser();
+                if (!currentUser) {
+                    window.location.href = 'login.html';
+                    return;
+                }
+
+                if (!localStorage.getItem('evaluationTarget')) {
+                    if (window.showToast) showToast('Invalid evaluation session', 'danger');
+                    setTimeout(() => { window.location.href = 'supervisor_manager_list.html'; }, 800);
+                    return;
+                }
+
+                targetId = localStorage.getItem('evaluationTarget');
+
+                document.getElementById('currentUser').textContent = currentUser.name;
+                loadQuestions();
+
+                setTimeout(() => {
+                    const formElements = document.querySelectorAll('#evaluationForm select[id^="rating"], #evaluationForm textarea, #evaluationForm input');
+                    formElements.forEach(element => { element.disabled = true; });
+                    const resetBtn = document.getElementById('resetButton');
+                    const editBtn = document.getElementById('editButton');
+                    if (resetBtn) resetBtn.disabled = true;
+                    if (editBtn) editBtn.disabled = false;
+                    isEditing = false;
+                }, 120);
+            }, 100);
+
+            document.getElementById('evaluationForm').addEventListener('submit', function(e) {
+                e.preventDefault();
+                saveSupervisorManagerEvaluation();
+            });
+        });
+    </script>
+</body>
+</html>

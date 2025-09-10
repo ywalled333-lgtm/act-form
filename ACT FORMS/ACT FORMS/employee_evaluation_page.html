@@ -1,0 +1,334 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Employee Evaluation - ACT Performance System</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <link href="styles.css" rel="stylesheet">
+</head>
+<body>
+    <nav class="navbar navbar-expand-lg">
+        <div class="container-fluid">
+            <a class="navbar-brand" href="#">
+                <i class="fas fa-chart-line me-2"></i>ACT Performance System
+            </a>
+            <div class="ms-auto d-flex align-items-center">
+                <span class="me-3 fw-bold" id="currentUser"></span>
+                <button class="btn btn-outline-danger" onclick="logout()">
+                    <i class="fas fa-sign-out-alt me-1"></i>Logout
+                </button>
+            </div>
+        </div>
+    </nav>
+
+    <div class="container mt-4">
+        <div class="row">
+            <div class="col-12">
+                <div class="card">
+                    <div class="card-header d-flex justify-content-between align-items-center">
+                        <div>
+                            <h4 class="mb-0">
+                                <i class="fas fa-user-check me-2"></i>
+                                <span id="evaluationTitle">Performance Evaluation</span>
+                            </h4>
+                            <p class="mb-0 mt-2" id="evaluationSubtitle">Please provide your honest feedback</p>
+                        </div>
+                        <div>
+                            <button type="button" class="btn btn-warning me-2" onclick="enableEdit()">
+                                <i class="fas fa-edit"></i> Edit
+                            </button>
+                            <button type="button" class="btn btn-outline-danger" onclick="resetAnswers()">
+                                <i class="fas fa-undo"></i> Reset
+                            </button>
+                        </div>
+                    </div>
+                    <div class="card-body">
+        <form id="evaluationForm">
+            <div id="questionsContainer">
+                                <!-- Questions will be dynamically loaded here -->
+            </div>
+
+                            <div class="mt-4">
+                                <label for="overallReason" class="form-label">
+                                    <strong id="overallReasonLabel">Overall Assessment Reason</strong>
+                        </label>
+                                <textarea class="form-control" id="overallReason" name="reason" rows="4" 
+                                    placeholder="Please provide your overall assessment and reasoning..."></textarea>
+            </div>
+
+                            <div class="mt-4 d-flex justify-content-between">
+                                <button type="button" class="btn btn-secondary" onclick="goBack()">
+                                    <i class="fas fa-arrow-left me-2"></i>
+                    <span id="backButton">Back</span>
+                </button>
+                <button type="submit" class="btn btn-primary">
+                                    <i class="fas fa-save me-2"></i>
+                    <span id="saveButton">Save Evaluation</span>
+                </button>
+            </div>
+        </form>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Toast Container -->
+    <div class="toast-container position-fixed bottom-0 end-0 p-3"></div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="app.js"></script>
+    <script>
+        let currentLanguage = localStorage.getItem('currentLanguage') || 'en';
+        let evaluationType = localStorage.getItem('evaluationType');
+        let targetId = localStorage.getItem('evaluationTarget');
+
+        // Set English as default language
+        currentLanguage = 'en';
+
+        function loadQuestions() {
+            const questionsContainer = document.getElementById('questionsContainer');
+            if (!questionsContainer) return;
+
+            const questions = [
+                { en: "How effectively do you communicate with your team members and colleagues?", ar: "ما مدى فعاليتك في التواصل مع أعضاء فريقك وزملائك؟" },
+                { en: "How well do you manage your time and prioritize tasks?", ar: "ما مدى جودة إدارتك للوقت وترتيب الأولويات؟" },
+                { en: "How successfully do you adapt to changes in the workplace?", ar: "ما مدى نجاحك في التكيف مع التغييرات في مكان العمل؟" },
+                { en: "How effectively do you collaborate with others on team projects?", ar: "ما مدى فعاليتك في التعاون مع الآخرين في المشاريع الجماعية؟" },
+                { en: "How well do you demonstrate leadership qualities in your role?", ar: "ما مدى جودة إظهارك لصفات القيادة في دورك؟" },
+                { en: "How effectively do you solve problems and make decisions?", ar: "ما مدى فعاليتك في حل المشكلات واتخاذ القرارات؟" },
+                { en: "How well do you contribute to achieving organizational goals?", ar: "ما مدى جودة مساهمتك في تحقيق الأهداف التنظيمية؟" },
+                { en: "How effectively do you handle feedback and criticism?", ar: "ما مدى فعاليتك في التعامل مع التغذية الراجعة والنقد؟" }
+            ];
+
+            // جلب الإجابات القديمة لو وجدت
+            const username = localStorage.getItem('username');
+            let evaluations = JSON.parse(localStorage.getItem('evaluations') || '[]');
+            let employeeEval = evaluations.find(e => e.id === username);
+            let savedAnswers = employeeEval && employeeEval.selfEvaluation ? employeeEval.selfEvaluation.answers : {};
+
+            questionsContainer.innerHTML = '';
+
+            questions.forEach((question, index) => {
+                const answerValue = savedAnswers && savedAnswers[`answer${index}`] ? savedAnswers[`answer${index}`] : '';
+                const commentValue = savedAnswers && savedAnswers[`comment${index}`] ? savedAnswers[`comment${index}`] : '';
+                const questionHtml = `
+                    <div class="question-card">
+                        <h6 class="question-text">${index + 1}. ${question.en}</h6>
+                        <p class="question-translation text-muted">${question.ar}</p>
+                                <div class="mb-3">
+                                    <label for="answer${index}" class="form-label">Your Answer (1-5):</label>
+                                    <select class="form-select" id="answer${index}" name="answer${index}" ${employeeEval && employeeEval.selfEvaluation && employeeEval.selfEvaluation.completed ? 'disabled' : ''}>
+                                        <option value="" ${answerValue === '' ? 'selected' : ''}>Select rating...</option>
+                                        <option value="1" ${answerValue === '1' ? 'selected' : ''}>1 - Strongly Disagree</option>
+                                        <option value="2" ${answerValue === '2' ? 'selected' : ''}>2 - Disagree</option>
+                                        <option value="3" ${answerValue === '3' ? 'selected' : ''}>3 - Neutral</option>
+                                        <option value="4" ${answerValue === '4' ? 'selected' : ''}>4 - Agree</option>
+                                        <option value="5" ${answerValue === '5' ? 'selected' : ''}>5 - Strongly Agree</option>
+                                    </select>
+                                </div>
+                        <div class="mb-3">
+                            <label for="comment${index}" class="form-label">Additional Comments:</label>
+                            <textarea class="form-control" id="comment${index}" name="comment${index}" rows="2"
+                                placeholder="Any additional comments..." ${employeeEval && employeeEval.selfEvaluation && employeeEval.selfEvaluation.completed ? 'disabled' : ''}>${commentValue}</textarea>
+                        </div>
+                    </div>
+                `;
+                questionsContainer.insertAdjacentHTML('beforeend', questionHtml);
+            });
+
+            // overall reason
+            const overallReason = savedAnswers && savedAnswers['reason'] ? savedAnswers['reason'] : '';
+            const overallReasonTextarea = document.getElementById('overallReason');
+            if (overallReasonTextarea) {
+                overallReasonTextarea.value = overallReason;
+                if (employeeEval && employeeEval.selfEvaluation && employeeEval.selfEvaluation.completed) {
+                    overallReasonTextarea.disabled = true;
+                } else {
+                    overallReasonTextarea.disabled = false;
+                }
+            }
+        }
+
+        function goBack() {
+            window.location.href = 'employee_home_page.html';
+        }
+
+        function enableEdit() {
+            // تحقق هل المدير أدخل أي تقييم
+            const username = localStorage.getItem('username');
+            let evaluations = JSON.parse(localStorage.getItem('evaluations') || '[]');
+            let employeeEval = evaluations.find(e => e.id === username);
+            let managerDone = false;
+            if (employeeEval) {
+                // تحقق من managerEvaluation أو evaluatesManager
+                if ((employeeEval.managerEvaluation && employeeEval.managerEvaluation.completed) ||
+                    (employeeEval.evaluatesManager && employeeEval.evaluatesManager.completed)) {
+                    managerDone = true;
+                }
+            }
+            if (managerDone) {
+                showToast("You can't edit because the manager has submitted it", 'warning');
+                return;
+            }
+            // Enable all inputs, selects and textareas in the form
+            const form = document.getElementById('evaluationForm');
+            if (!form) return;
+            Array.from(form.elements).forEach(el => {
+                if (el.tagName === 'INPUT' || el.tagName === 'TEXTAREA' || el.tagName === 'SELECT') {
+                    el.disabled = false;
+                }
+            });
+            showToast('Edit mode enabled', 'info');
+        }
+
+        function resetAnswers() {
+            // لا يمكن عمل reset إلا إذا كانت الحقول غير معطلة (أي بعد الضغط على Edit)
+            const form = document.getElementById('evaluationForm');
+            if (!form) return;
+
+            // تحقق إذا كانت الحقول معطلة (نشمل SELECT الآن)
+            const anyDisabled = Array.from(form.elements).some(el =>
+                (el.tagName === 'INPUT' || el.tagName === 'TEXTAREA' || el.tagName === 'SELECT') && el.disabled
+            );
+
+            if (anyDisabled) {
+                showToast('Please click Edit before resetting answers.', 'warning');
+                return;
+            }
+
+            Array.from(form.elements).forEach(el => {
+                if (el.tagName === 'INPUT' || el.tagName === 'TEXTAREA' || el.tagName === 'SELECT') {
+                    // reset selects to empty value, inputs/textareas to empty string
+                    try { el.value = ''; } catch (e) {}
+                }
+            });
+
+            showToast('All answers have been reset', 'warning');
+        }
+
+        function saveEvaluation() {
+    const form = document.getElementById('evaluationForm');
+    const answers = {};
+    if (!form) return;
+
+    Array.from(form.elements).forEach(el => {
+        if (el.name && (el.tagName === 'INPUT' || el.tagName === 'TEXTAREA')) {
+            answers[el.name] = el.value;
+        }
+    });
+
+    // حفظ الإجابات في localStorage لهذا الشريط
+    localStorage.setItem('employee_self_answers', JSON.stringify(answers));
+
+            // Also persist into the canonical evaluations array so managers can see it
+            try {
+                const currentUser = getCurrentUser();
+                const userId = (currentUser && currentUser.id) || localStorage.getItem('userId') || null;
+                let evaluations = JSON.parse(localStorage.getItem('evaluations') || '[]');
+                let employeeEval = null;
+                if (userId) {
+                    employeeEval = evaluations.find(e => e.id === userId);
+                }
+                if (!employeeEval) {
+                    // fallback: try username map
+                    const username = localStorage.getItem('username');
+                    employeeEval = evaluations.find(e => e.id === username || e.username === username);
+                }
+
+                if (!employeeEval) {
+                    // create canonical record using currentUser when possible
+                    employeeEval = {
+                        id: userId || (currentUser && currentUser.username) || '',
+                        name: (currentUser && currentUser.name) || localStorage.getItem('name') || '',
+                        email: (currentUser && currentUser.email) || ''
+                    };
+                    evaluations.push(employeeEval);
+                }
+
+                employeeEval.selfEvaluation = employeeEval.selfEvaluation || {};
+                employeeEval.selfEvaluation.answers = answers;
+                employeeEval.selfEvaluation.completed = true;
+                employeeEval.selfEvaluation.date = new Date().toISOString();
+
+                // optional overall reason field mapping
+                if (answers['reason']) {
+                    employeeEval.selfEvaluation.reason = answers['reason'];
+                }
+
+                localStorage.setItem('evaluations', JSON.stringify(evaluations));
+            } catch (e) {
+                console.error('Failed to persist evaluation to canonical store', e);
+            }
+
+    // باقي الحفظ القديم لو محتاجه
+    showToast('Evaluation saved successfully!', 'success');
+    setTimeout(() => {
+        window.location.href = 'employee_home_page.html';
+    }, 1000);
+}
+
+        function saveManagerEvaluation() {
+    const form = document.getElementById('evaluationForm');
+    const answers = {};
+    if (!form) return;
+
+    Array.from(form.elements).forEach(el => {
+        if (el.name && (el.tagName === 'INPUT' || el.tagName === 'TEXTAREA')) {
+            answers[el.name] = el.value;
+        }
+    });
+
+    // حفظ الإجابات في localStorage لمتابعة التقدم
+    localStorage.setItem('employee_manager_answers', JSON.stringify(answers));
+
+    // حفظ البيانات القديمة لو أردت الاحتفاظ بها
+    const currentUser = getCurrentUser();
+    const userId = (currentUser && currentUser.id) || localStorage.getItem('userId') || null;
+    let evaluations = JSON.parse(localStorage.getItem('evaluations') || '[]');
+    let employeeEval = null;
+    if (userId) {
+        employeeEval = evaluations.find(e => e.id === userId);
+    }
+    if (!employeeEval) {
+        const username = localStorage.getItem('username');
+        employeeEval = evaluations.find(e => e.id === username || e.username === username) || { id: userId || username };
+        if (!evaluations.find(e => e === employeeEval)) evaluations.push(employeeEval);
+    }
+    employeeEval.evaluatesManager = {
+        completed: true,
+        answers: answers,
+        date: new Date().toISOString()
+    };
+    localStorage.setItem('evaluations', JSON.stringify(evaluations));
+
+    showToast('Manager evaluation saved!', 'success');
+    setTimeout(() => {
+        window.location.href = 'employee_home_page.html';
+    }, 1000);
+}
+
+        // Initialize page
+        document.addEventListener('DOMContentLoaded', function() {
+            setTimeout(() => {
+                const currentUser = getCurrentUser();
+                if (!currentUser) {
+                    window.location.href = 'login.html';
+                    return;
+                }
+
+                document.getElementById('currentUser').textContent = currentUser.name;
+                loadQuestions();
+            }, 100);
+
+            // Set up form submission
+            document.getElementById('evaluationForm').addEventListener('submit', function(e) {
+                e.preventDefault();
+                saveEvaluation();
+            });
+        });
+    </script>
+</body>
+</html>

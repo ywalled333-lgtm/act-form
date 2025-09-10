@@ -1,0 +1,493 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Employee Evaluation - ACT Performance System</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <link href="styles.css" rel="stylesheet">
+</head>
+<body>
+    <nav class="navbar navbar-expand-lg">
+        <div class="container-fluid">
+            <a class="navbar-brand" href="#">
+                <i class="fas fa-chart-line me-2"></i>ACT Performance System
+            </a>
+            <div class="ms-auto d-flex align-items-center">
+                <span class="me-3 fw-bold" id="currentUser"></span>
+                <button class="btn btn-outline-danger" onclick="logout()">
+                    <i class="fas fa-sign-out-alt me-1"></i>Logout
+                </button>
+            </div>
+        </div>
+    </nav>
+
+    <div class="container mt-4">
+        <div class="row">
+            <div class="col-12">
+                <div class="card">
+                    <div class="card-header">
+                        <div class="d-flex justify-content-between">
+                            <div>
+                                <h4 class="mb-0">
+                                    <i class="fas fa-user-check me-2"></i>
+                                    <span id="evaluationTitle">Performance Evaluation</span>
+                                </h4>
+                                <p class="mb-0 mt-2" id="evaluationSubtitle">Please provide your honest feedback</p>
+                            </div>
+                            <div class="d-flex justify-content-end">
+                                <button id="editButton" class="btn btn-warning me-2" onclick="enableEditing()">
+                                    <i class="fas fa-edit me-1"></i>Edit
+                                </button>
+                                <button id="resetButton" class="btn btn-danger" onclick="resetForm()" disabled>
+                                    <i class="fas fa-undo me-1"></i>Reset
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="card-body">
+        <div class="d-flex justify-content-end mb-3">
+        </div>
+        <div id="debugInfo" class="mb-3"></div>
+
+        <form id="evaluationForm">
+            <div id="questionsContainer">
+                                <!-- Questions will be dynamically loaded here -->
+            </div>
+
+                            <div class="mt-4">
+                                <label for="overallReason" class="form-label">
+                                    <strong id="overallReasonLabel">Overall Assessment Reason</strong>
+                        </label>
+                                <textarea class="form-control" id="overallReason" name="reason" rows="4" 
+                                    placeholder="Please provide your overall assessment and reasoning..."></textarea>
+            </div>
+
+                            <div class="mt-4 d-flex justify-content-between">
+                                <button type="button" class="btn btn-secondary" onclick="goBack()">
+                                    <i class="fas fa-arrow-left me-2"></i>
+                    <span id="backButton">Back</span>
+                </button>
+                <button type="submit" class="btn btn-primary">
+                                    <i class="fas fa-save me-2"></i>
+                    <span id="saveButton">Save Evaluation</span>
+                </button>
+            </div>
+        </form>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Toast Container -->
+    <div class="toast-container position-fixed bottom-0 end-0 p-3"></div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        // Global error handler to help debug runtime failures before other scripts run
+        window.addEventListener('error', function (event) {
+            console.error('Global runtime error caught:', event.error || event.message);
+            try {
+                var qc = document.getElementById('questionsContainer');
+                if (qc) qc.innerHTML = '<div class="alert alert-danger">Runtime error: ' + (event.error && event.error.message ? event.error.message : event.message || 'unknown') + '</div>';
+            } catch (e) {
+                // ignore
+            }
+            try {
+                if (!window.showToast) {
+                    window.showToast = function (message, type) { alert(message); };
+                }
+                window.showToast('A runtime error occurred: ' + (event.error && event.error.message ? event.error.message : event.message || 'unknown'), 'danger');
+            } catch (e) {
+                // ignore
+            }
+        });
+    </script>
+    <script src="app.js"></script>
+    <script>
+        let currentLanguage = localStorage.getItem('currentLanguage') || 'en';
+        let evaluationType = localStorage.getItem('evaluationType');
+        let targetId = localStorage.getItem('evaluationTarget');
+
+        // Set English as default language
+        currentLanguage = 'en';
+
+        // Ensure rating options exist without redeclaring a global `ratingOptions`
+        const availableRatingOptions = (typeof ratingOptions !== 'undefined') ? ratingOptions : (window.ratingOptions || ['Strongly Agree', 'Agree', 'Disagree', 'Strongly Disagree']);
+
+        function loadQuestions() {
+            console.log('Loading questions...');
+            const questionsContainer = document.getElementById('questionsContainer');
+
+            if (!questionsContainer) {
+                console.error('Questions container not found!');
+                return;
+            }
+
+            try {
+                const evaluationId = localStorage.getItem('evaluationTarget');
+                const evaluations = JSON.parse(localStorage.getItem('evaluations') || '[]');
+                const users = getUsers ? getUsers() : (JSON.parse(localStorage.getItem('users') || '[]'));
+                const targetRaw = evaluationId ? String(evaluationId).trim() : '';
+
+                // Try to find evaluation by id first, then by name (flexible, case-insensitive)
+                let evaluation = null;
+                if (targetRaw) {
+                    // match id case-insensitively
+                    evaluation = evaluations.find(e => e && e.id && String(e.id).trim().toLowerCase() === targetRaw.toLowerCase());
+                    if (!evaluation) {
+                        // try matching by name (case-insensitive, trimmed)
+                        const targetName = targetRaw.toLowerCase();
+                        evaluation = evaluations.find(e => e && e.name && String(e.name).trim().toLowerCase() === targetName);
+                    }
+
+                    // if still not found, try resolving a user by id (case-insensitive) to get canonical id/name
+                    if (!evaluation) {
+                        const userRecord = users.find(u => u && u.id && String(u.id).trim().toLowerCase() === targetRaw.toLowerCase())
+                            || users.find(u => u && u.username && String(u.username).trim().toLowerCase() === targetRaw.toLowerCase());
+                        if (userRecord) {
+                            evaluation = evaluations.find(e => e && e.id && String(e.id).trim().toLowerCase() === String(userRecord.id).trim().toLowerCase())
+                                || evaluations.find(e => e && e.name && String(e.name).trim().toLowerCase() === String(userRecord.name).trim().toLowerCase());
+                        }
+                    }
+                }
+
+                // If still not found, try a stored target name key
+                if (!evaluation) {
+                    const storedName = localStorage.getItem('evaluationTargetName') || localStorage.getItem('evaluationTargetNameLower');
+                    if (storedName) {
+                        const t = String(storedName).trim().toLowerCase();
+                        evaluation = evaluations.find(e => e && e.name && String(e.name).trim().toLowerCase() === t);
+                    }
+                }
+
+                // Final fallback: any evaluation whose name exists and includes the target as substring
+                if (!evaluation && targetRaw) {
+                    const targetLower = targetRaw.toLowerCase();
+                    evaluation = evaluations.find(e => e && e.name && String(e.name).trim().toLowerCase().includes(targetLower));
+                }
+
+                // set header/title using resolved employee name (if available)
+                try {
+                    const titleEl = document.getElementById('evaluationTitle');
+                    const subtitleEl = document.getElementById('evaluationSubtitle');
+                    let displayName = '';
+                    if (evaluation && evaluation.name) displayName = evaluation.name;
+                    else {
+                        const usersList = getUsers ? getUsers() : (JSON.parse(localStorage.getItem('users') || '[]'));
+                        const idMatch = usersList.find(u => u && u.id && String(u.id).trim().toLowerCase() === String(evaluationId || '').trim().toLowerCase());
+                        const unameMatch = usersList.find(u => u && u.username && String(u.username).trim().toLowerCase() === String(evaluationId || '').trim().toLowerCase());
+                        const userMatch = idMatch || unameMatch;
+                        if (userMatch) displayName = userMatch.name;
+                    }
+                    if (displayName) {
+                        if (titleEl) titleEl.textContent = 'Evaluation for ' + displayName;
+                        if (subtitleEl && evaluation && evaluation.department) subtitleEl.textContent = evaluation.department;
+                    }
+                } catch (e) {
+                    // ignore header update errors
+                }
+
+                // fallback questions
+                const sharedQuestions = window.questions || [
+                    { en: "How effectively do you communicate with your team members and colleagues?", ar: "ما مدى فعاليتك في التواصل مع أعضاء فريقك وزملائك؟" },
+                    { en: "How well do you manage your time and prioritize tasks?", ar: "ما مدى جودة إدارتك للوقت وترتيب الأولويات؟" },
+                    { en: "How successfully do you adapt to changes in the workplace?", ar: "ما مدى نجاحك في التكيف مع التغييرات في مكان العمل؟" },
+                    { en: "How effectively do you collaborate with others on team projects?", ar: "ما مدى فعاليتك في التعاون مع الآخرين في المشاريع الجماعية؟" },
+                    { en: "How well do you demonstrate leadership qualities in your role?", ar: "ما مدى جودة إظهارك لصفات القيادة في دورك؟" },
+                    { en: "How effectively do you solve problems and make decisions?", ar: "ما مدى فعاليتك في حل المشكلات واتخاذ القرارات؟" },
+                    { en: "How well do you contribute to achieving organizational goals?", ar: "ما مدى جودة مساهمتك في تحقيق الأهداف التنظيمية؟" },
+                    { en: "How effectively do you handle feedback and criticism?", ar: "ما مدى فعاليتك في التعامل مع التغذية الراجعة والنقد؟" }
+                ];
+
+                const sourceQuestions = (evaluation && evaluation.evaluatesManager && Array.isArray(evaluation.evaluatesManager.questions) && evaluation.evaluatesManager.questions.length)
+                    ? evaluation.evaluatesManager.questions
+                    : sharedQuestions.map(q => ({ text: q.en }));
+
+                // saved answers (may be object)
+                // Prefer canonical selfEvaluation (employee's page), then evaluatesManager, then try other evaluations or transient storage keys
+                let savedAnswers = {};
+                function normalizeTransient(trans) {
+                    if (!trans) return null;
+                    if (trans.answers && typeof trans.answers === 'object' && Object.keys(trans.answers).length) return trans.answers;
+                    // if transient itself has answer/comment keys, use it
+                    const hasKeys = Object.keys(trans).some(k => k.startsWith('answer') || k.startsWith('comment') || k === 'reason');
+                    if (hasKeys) return trans;
+                    return null;
+                }
+
+                if (evaluation && evaluation.selfEvaluation && evaluation.selfEvaluation.answers && Object.keys(evaluation.selfEvaluation.answers).length) {
+                    savedAnswers = evaluation.selfEvaluation.answers;
+                } else if (evaluation && evaluation.evaluatesManager && evaluation.evaluatesManager.answers && Object.keys(evaluation.evaluatesManager.answers).length) {
+                    savedAnswers = evaluation.evaluatesManager.answers;
+                } else {
+                    // try to find any other evaluation record matching the target id (different key names)
+                    try {
+                        const other = evaluations.find(ev => ev && (ev.id === evaluationId || ev.username === evaluationId || ev.email === evaluationId));
+                        if (other && other.selfEvaluation && other.selfEvaluation.answers && Object.keys(other.selfEvaluation.answers).length) {
+                            savedAnswers = other.selfEvaluation.answers;
+                        } else {
+                            // try transient keys: employee_self_answers_<id>
+                            const keyById = localStorage.getItem('employee_self_answers_' + evaluationId);
+                            let transient = null;
+                            if (keyById) {
+                                try { transient = JSON.parse(keyById); } catch (e) { transient = null; }
+                            }
+
+                            if (!transient) {
+                                try { transient = JSON.parse(localStorage.getItem('employee_self_answers') || 'null'); } catch (e) { transient = null; }
+                            }
+
+                            const normalized = normalizeTransient(transient);
+                            if (normalized) savedAnswers = normalized;
+                        }
+                    } catch (e) {
+                        // ignore and leave savedAnswers empty
+                    }
+                }
+
+                // safe normalizer for comments/arrays/objects
+                function safeNormalizeComments(comments) {
+                    if (comments == null) return '';
+                    if (Array.isArray(comments)) return comments.join('\n');
+                    if (typeof comments === 'string') return comments;
+                    if (typeof comments === 'object') {
+                        try {
+                            // collect stringifiable values
+                            return Object.keys(comments)
+                                .sort()
+                                .map(k => {
+                                    const v = comments[k];
+                                    if (v == null) return '';
+                                    if (typeof v === 'string') return v;
+                                    if (Array.isArray(v)) return v.join(' ');
+                                    try { return String(v); } catch (e) { return ''; }
+                                })
+                                .filter(Boolean)
+                                .join('\n');
+                        } catch (e) {
+                            return '';
+                        }
+                    }
+                    try { return String(comments); } catch (e) { return ''; }
+                }
+
+                questionsContainer.innerHTML = '';
+
+                sourceQuestions.forEach((question, index) => {
+                    const answerText = savedAnswers[`answer${index}`] || '';
+                    const commentText = savedAnswers[`comment${index}`] ? safeNormalizeComments(savedAnswers[`comment${index}`]) : '';
+                    const ratingValue = (evaluation && evaluation.evaluatesManager && evaluation.evaluatesManager.ratings && evaluation.evaluatesManager.ratings[`rating${index}`]) || '';
+
+                    const questionHtml = `
+                        <div class="question-card">
+                            <h6 class="question-text">${index + 1}. ${question.text || question.en}</h6>
+
+                                    <div class="mb-3">
+                                        <label for="answer${index}" class="form-label">Answer (1-5):</label>
+                                        <select class="form-select" id="answer${index}" name="answer${index}" disabled>
+                                            <option value="" ${answerText === '' ? 'selected' : ''}>Select rating...</option>
+                                            <option value="1" ${answerText === '1' ? 'selected' : ''}>1 - Strongly Disagree</option>
+                                            <option value="2" ${answerText === '2' ? 'selected' : ''}>2 - Disagree</option>
+                                            <option value="3" ${answerText === '3' ? 'selected' : ''}>3 - Neutral</option>
+                                            <option value="4" ${answerText === '4' ? 'selected' : ''}>4 - Agree</option>
+                                            <option value="5" ${answerText === '5' ? 'selected' : ''}>5 - Strongly Agree</option>
+                                        </select>
+                                    </div>
+
+                            <div class="mb-3">
+                                <label for="comment${index}" class="form-label">Additional Comments:</label>
+                                <textarea class="form-control" id="comment${index}" name="comment${index}" rows="2" disabled>${commentText}</textarea>
+                            </div>
+
+                            <div class="mb-3">
+                                <label class="form-label">Supervisor Rating:</label>
+                                <div class="rating-options">
+                                    ${availableRatingOptions.map((rating, ratingIndex) => `
+                                        <div class="rating-option">
+                                            <input type="radio" name="rating${index}" id="rating${index}_${ratingIndex}" value="${rating}" ${rating === ratingValue ? 'checked' : ''} disabled>
+                                             <label for="rating${index}_${ratingIndex}">${rating}</label>
+                                        </div>
+                                    `).join('')}
+                                </div>
+                            </div>
+                        </div>
+                    `;
+
+                    questionsContainer.insertAdjacentHTML('beforeend', questionHtml);
+                });
+
+                // overall reason: prefer selfEvaluation.reason, then evaluatesManager.reason, then transient
+                let overallRaw = '';
+                if (evaluation && evaluation.selfEvaluation && (evaluation.selfEvaluation.reason || evaluation.selfEvaluation.comments)) {
+                    overallRaw = evaluation.selfEvaluation.reason || evaluation.selfEvaluation.comments || '';
+                } else if (evaluation && evaluation.evaluatesManager && (evaluation.evaluatesManager.reason || evaluation.evaluatesManager.comments)) {
+                    overallRaw = evaluation.evaluatesManager.reason || evaluation.evaluatesManager.comments || '';
+                } else {
+                    try {
+                        const transientSelf = JSON.parse(localStorage.getItem('employee_self_answers') || 'null');
+                        if (transientSelf && transientSelf['reason']) overallRaw = transientSelf['reason'];
+                    } catch (e) { /* ignore */ }
+                }
+                const overallReasonText = safeNormalizeComments(overallRaw);
+
+                const overallReasonTextarea = document.getElementById('overallReason');
+                if (overallReasonTextarea) {
+                    overallReasonTextarea.value = overallReasonText;
+                    overallReasonTextarea.disabled = true;
+                }
+
+                console.log('Questions loaded successfully!');
+            } catch (err) {
+                console.error('Error loading questions:', err);
+                questionsContainer.innerHTML = `<div class="alert alert-danger">Runtime error: ${err && err.message ? err.message : String(err)}</div>`;
+                showToast('Runtime error: ' + (err && err.message ? err.message : 'unknown'), 'danger');
+            }
+        }
+
+        function goBack() {
+            const currentUser = getCurrentUser();
+            if (!currentUser) {
+                window.location.href = 'login.html';
+                return;
+            }
+
+            window.location.href = 'manager_employee_list.html';
+        }
+
+        function enableEditing() {
+                    // Enable rating radio inputs and selects so textareas remain read-only
+                    const ratingInputs = document.querySelectorAll('#evaluationForm input[type="radio"][name^="rating"]');
+                    ratingInputs.forEach(input => { input.disabled = false; });
+                    const selects = document.querySelectorAll('#evaluationForm select[id^="answer"]');
+                    selects.forEach(s => { s.disabled = false; });
+                    document.getElementById('resetButton').disabled = false;
+                    document.getElementById('editButton').disabled = true;
+        }
+
+        function resetForm() {
+                    // Reset rating selections and selects (do not clear textareas)
+                    const ratingInputs = document.querySelectorAll('#evaluationForm input[type="radio"][name^="rating"]');
+                    ratingInputs.forEach(input => { input.checked = false; });
+                    const selects = document.querySelectorAll('#evaluationForm select[id^="answer"]');
+                    selects.forEach(s => { try { s.value = ''; } catch (e) {} });
+        }
+
+        // Save manager-viewed evaluation and return to managers list
+        function saveManagerAndReturn() {
+            const evaluationId = localStorage.getItem('evaluationTarget');
+            if (!evaluationId) {
+                showToast('No evaluation selected', 'danger');
+                return;
+            }
+
+            const evaluations = JSON.parse(localStorage.getItem('evaluations') || '[]');
+            let evaluation = evaluations.find(e => e.id === evaluationId);
+            if (!evaluation) {
+                // if the target evaluation record doesn't exist yet, create a minimal placeholder
+                evaluation = {
+                    id: evaluationId,
+                    name: '',
+                    email: '',
+                    department: '',
+                    selfEvaluation: {},
+                    evaluatesManager: {},
+                    managerEvaluation: {}
+                };
+                evaluations.push(evaluation);
+            }
+
+            // collect number of questions from DOM
+            const questionCards = document.querySelectorAll('.question-card');
+            const n = questionCards.length;
+
+            const answers = {};
+            const comments = {};
+            const ratings = {};
+
+            for (let i = 0; i < n; i++) {
+                const a = document.getElementById('answer' + i);
+                const c = document.getElementById('comment' + i);
+                answers['answer' + i] = a ? a.value : '';
+                comments['comment' + i] = c ? c.value : '';
+
+                const checked = document.querySelector('input[name="rating' + i + '"]:checked');
+                ratings['rating' + i] = checked ? checked.value : null;
+            }
+
+            const overall = document.getElementById('overallReason');
+            const reason = overall ? overall.value : '';
+
+
+            // Prepare manager evaluation object
+            const managerEval = {
+                completed: true,
+                answers: answers,
+                comments: comments,
+                ratings: ratings,
+                reason: reason,
+                date: new Date().toISOString(),
+                evaluatorId: (getCurrentUser() && getCurrentUser().id) || null
+            };
+
+            // store under both evaluatesManager and managerEvaluation so other pages read consistently
+            evaluation.evaluatesManager = managerEval;
+            evaluation.managerEvaluation = managerEval;
+
+            localStorage.setItem('evaluations', JSON.stringify(evaluations));
+
+            showToast('Evaluation saved', 'success');
+            setTimeout(() => {
+                window.location.href = 'manager_employee_list.html';
+            }, 800);
+         }
+
+        // Initialize page
+        document.addEventListener('DOMContentLoaded', function() {
+            try {
+                // Wait a bit to ensure app.js is loaded
+                setTimeout(() => {
+                    const currentUser = getCurrentUser();
+                    if (!currentUser) {
+                        window.location.href = 'login.html';
+                        return;
+                    }
+
+                    // Log debug info
+                    console.log('DEBUG: evaluationTarget=', targetId);
+                    const evaluations = JSON.parse(localStorage.getItem('evaluations') || '[]');
+                    console.log('DEBUG: evaluations.length=', evaluations.length);
+
+                    // If targetId missing, show warning but don't hard redirect immediately
+                    if (!targetId) {
+                        showToast('No evaluation selected (evaluationTarget missing)', 'warning');
+                        // continue to try to load questions with fallback
+                    }
+
+                    document.getElementById('currentUser').textContent = currentUser.name;
+                    console.log('About to load questions...');
+                    loadQuestions();
+                }, 100);
+
+                // Set up form submission
+                document.getElementById('evaluationForm').addEventListener('submit', function(e) {
+                    e.preventDefault();
+                    saveManagerAndReturn();
+                });
+
+                const formElements = document.querySelectorAll('#evaluationForm textarea, #evaluationForm input');
+                formElements.forEach(element => {
+                    element.disabled = true;
+                });
+            } catch (err) {
+                console.error('Initialization error in manager_evaluation_from_employee.html', err);
+                showToast('Initialization error: ' + (err && err.message ? err.message : 'unknown'), 'danger');
+                const qc = document.getElementById('questionsContainer');
+                if (qc) qc.innerHTML = `<div class="alert alert-danger">Runtime error: ${err && err.message ? err.message : 'unknown'}</div>`;
+            }
+        });
+    </script>
+</body>
+</html>

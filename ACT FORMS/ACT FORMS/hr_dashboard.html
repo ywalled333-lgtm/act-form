@@ -1,0 +1,264 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>HR Dashboard - ACT Performance System</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <link href="styles.css" rel="stylesheet">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.31/jspdf.plugin.autotable.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+</head>
+<body>
+    <nav class="navbar navbar-expand-lg">
+        <div class="container-fluid">
+            <a class="navbar-brand" href="#">
+                <i class="fas fa-chart-line me-2"></i>ACT Performance System
+            </a>
+            <div class="ms-auto d-flex align-items-center">
+                <span class="me-3 fw-bold" id="currentUser"></span>
+                <button class="btn btn-outline-danger" onclick="logout()">
+                    <i class="fas fa-sign-out-alt me-1"></i>Logout
+                </button>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Language Toggle -->
+
+    <div class="container mt-4">
+        <!-- Welcome Section -->
+        <div class="welcome-section fade-in">
+            <h1 class="page-title" id="welcomeTitle">HR Dashboard</h1>
+            <p class="page-subtitle" id="welcomeSubtitle">Comprehensive performance evaluation management</p>
+        </div>
+
+        <!-- Statistics Cards -->
+        <div class="row g-4 fade-in">
+            <div class="col-md-3">
+                <div class="stat-card">
+                    <div class="stat-icon text-primary">
+                        <i class="fas fa-users"></i>
+                    </div>
+                    <div class="stat-number" id="totalEmployees">0</div>
+                    <div class="stat-label" id="totalEmployeesLabel">Total Employees</div>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="stat-card">
+                    <div class="stat-icon text-success">
+                        <i class="fas fa-check-circle"></i>
+                    </div>
+                    <div class="stat-number" id="completedEvaluations">0</div>
+                    <div class="stat-label" id="completedEvaluationsLabel">Completed</div>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="stat-card">
+                    <div class="stat-icon text-warning">
+                        <i class="fas fa-clock"></i>
+                    </div>
+                    <div class="stat-number" id="pendingEvaluations">0</div>
+                    <div class="stat-label" id="pendingEvaluationsLabel">Pending</div>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="stat-card">
+                    <div class="stat-icon text-info">
+                        <i class="fas fa-percentage"></i>
+                    </div>
+                    <div class="stat-number" id="completionRate">0%</div>
+                    <div class="stat-label" id="completionRateLabel">Completion Rate</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Action Cards -->
+        <div class="row g-4 mt-4 fade-in justify-content-center">
+            <div class="col-md-3">
+        <div class="option-card" onclick="viewAllEvaluations()">
+                    <div class="text-center">
+                        <div class="option-icon">
+                            <i class="fas fa-list-alt"></i>
+                        </div>
+            <h3 class="option-title" id="allEvalsTitle">All Users</h3>
+            <p class="option-description" id="allEvalsDesc">Manage and monitor all users</p>
+            <p class="option-description" id="allEvalsDescAr" style="display: none;">عرض وإدارة جميع المستخدمين</p>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="option-card" onclick="exportData()">
+                    <div class="text-center">
+                        <div class="option-icon">
+                            <i class="fas fa-download"></i>
+                        </div>
+                        <h3 class="option-title" id="exportTitle">Export Reports</h3>
+                        <p class="option-description" id="exportDesc">PDF, Excel & CSV formats</p>
+                        <p class="option-description" id="exportDescAr" style="display: none;">تصدير التقارير بصيغ PDF، Excel و CSV</p>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="option-card" onclick="startSelfEvaluation()">
+                    <div class="text-center">
+                        <div class="option-icon">
+                            <i class="fas fa-user-check"></i>
+                        </div>
+                        <h3 class="option-title" id="selfEvalTitle">Self Evaluation</h3>
+                        <p class="option-description" id="selfEvalDesc">Complete your own evaluation</p>
+                        <p class="option-description" id="selfEvalDescAr" style="display: none;">إكمال تقييمك الذاتي</p>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="option-card" onclick="manageQuestions()">
+                    <div class="text-center">
+                        <div class="option-icon">
+                            <i class="fas fa-question-circle"></i>
+                        </div>
+                        <h3 class="option-title" id="questionManagementTitle">Question Management</h3>
+                        <p class="option-description" id="questionManagementDesc">Manage evaluation questions</p>
+                        <p class="option-description" id="questionManagementDescAr" style="display: none;">إدارة أسئلة التقييم</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Department Statistics -->
+        <div class="card mt-4 fade-in">
+            <div class="card-header">
+                <h5 class="mb-0">
+                    <i class="fas fa-building me-2"></i>
+                    <span id="deptStatsTitle">Department Statistics</span>
+                </h5>
+            </div>
+            <div class="card-body">
+                <div class="row" id="departmentStats">
+                    <!-- Department statistics will be loaded here -->
+                </div>
+            </div>
+        </div>
+
+        <!-- Recent Activity -->
+        <div class="card mt-4 fade-in">
+            <div class="card-header">
+                <h5 class="mb-0">
+                    <i class="fas fa-history me-2"></i>
+                    <span id="recentActivityTitle">Recent Activity</span>
+                </h5>
+            </div>
+            <div class="card-body">
+                <div id="recentActivity">
+                    <p class="text-muted" id="noActivityText">No recent activity</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Toast Container -->
+    <div class="toast-container position-fixed bottom-0 end-0 p-3"></div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.31/jspdf.plugin.autotable.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+    <script src="app.js"></script>
+    <script>
+        // Define getCurrentUser function
+        function getCurrentUser() {
+            const userData = localStorage.getItem('currentUser');
+            if (userData) {
+                try {
+                    return JSON.parse(userData);
+                } catch (e) {
+                    console.error('Error parsing user data from localStorage:', e);
+                    return null;
+                }
+            }
+            return null;
+        }
+
+        function updateStatistics() {
+            const stats = getSystemStatistics();
+            
+            document.getElementById('totalEmployees').textContent = stats.total;
+            document.getElementById('completedEvaluations').textContent = stats.fullyCompleted;
+            document.getElementById('pendingEvaluations').textContent = stats.total - stats.fullyCompleted;
+            document.getElementById('completionRate').textContent = `${stats.overallCompletionRate}%`;
+
+            // Load department statistics
+            loadDepartmentStatistics();
+        }
+
+        function loadDepartmentStatistics() {
+            const deptStats = getDepartmentStatistics();
+            const container = document.getElementById('departmentStats');
+            
+            container.innerHTML = '';
+            
+            Object.keys(deptStats).forEach(dept => {
+                const deptData = deptStats[dept];
+                const deptCard = `
+                    <div class="col-md-4 mb-3">
+                        <div class="card">
+                            <div class="card-body text-center">
+                                <h6 class="card-title">${dept}</h6>
+                                <div class="progress mb-2">
+                                    <div class="progress-bar" role="progressbar" style="width: ${deptData.completionRate}%">
+                                        ${deptData.completionRate}%
+                                    </div>
+                                </div>
+                                <small class="text-muted">
+                                    ${deptData.completed}/${deptData.total} completed
+                                </small>
+                            </div>
+                        </div>
+                    </div>
+                `;
+                container.insertAdjacentHTML('beforeend', deptCard);
+            });
+        }
+
+        function viewStatistics() {
+            showToast('Statistics view coming soon', 'info');
+        }
+
+        function viewAllEvaluations() {
+            // Open the HR all users page (list & manage users)
+            window.location.href = 'hr_all_users.html';
+        }
+
+        function startSelfEvaluation() {
+            const currentUser = getCurrentUser ? getCurrentUser() : null;
+            if (!currentUser) {
+                window.location.href = 'login.html';
+                return;
+            }
+            // set evaluation target to current HR user id so the HR-evaluation page loads their self-eval
+            localStorage.setItem('evaluationTarget', currentUser.id || currentUser.username || '');
+            localStorage.setItem('evaluationType', 'employee');
+            window.location.href = 'hr_evaluation.html';
+        }
+
+        function manageQuestions() {
+            // Redirect to a question management page
+            window.location.href = 'question_management.html';
+        }
+
+        // Initialize page
+        document.addEventListener('DOMContentLoaded', function() {
+            const currentUser = getCurrentUser();
+            if (!currentUser) {
+                window.location.href = 'login.html';
+                return;
+            }
+
+            document.getElementById('currentUser').textContent = currentUser.name;
+            updateStatistics();
+        });
+    </script>
+</body>
+</html>

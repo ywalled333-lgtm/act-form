@@ -1,0 +1,146 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Login - ACT Performance System</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <link href="styles.css" rel="stylesheet">
+</head>
+<body>
+    <div class="container-fluid vh-100 d-flex align-items-center justify-content-center">
+        <div class="row w-100">
+            <div class="col-md-6 col-lg-4 mx-auto">
+                <div class="card shadow-lg">
+                    <div class="card-header text-center">
+                        <h3 class="mb-0">
+                            <i class="fas fa-chart-line me-2"></i>
+                            ACT Performance System
+                        </h3>
+                        <p class="text-muted mt-2">Sign in to your account</p>
+                    </div>
+                    <div class="card-body p-4">
+                        <form id="loginForm">
+                            <div class="mb-3">
+                                <label for="username" class="form-label">Username</label>
+                                <div class="input-group">
+                                    <span class="input-group-text">
+                                        <i class="fas fa-user"></i>
+                                    </span>
+                                    <input type="text" class="form-control" id="username" name="username" required>
+                                </div>
+                            </div>
+                            
+                            <div class="mb-3">
+                                <label for="password" class="form-label">Password</label>
+                                <div class="input-group">
+                                    <span class="input-group-text">
+                                        <i class="fas fa-lock"></i>
+                                    </span>
+                                    <input type="password" class="form-control" id="password" name="password" required>
+                                </div>
+                            </div>
+                            
+                            <div class="d-grid">
+                                <button type="submit" class="btn btn-primary btn-lg" id="loginButton">
+                                    <i class="fas fa-sign-in-alt me-2"></i>
+                                    Sign In
+                                </button>
+                            </div>
+                        </form>
+                        
+                        <div class="mt-4">
+                            <h6 class="text-muted">Sample Accounts:</h6>
+                            <div class="row">
+                                <div class="col-6">
+                                    <small class="text-muted">Employee:</small><br>
+                                    <small>john.doe / password123</small>
+                                </div>
+                                <div class="col-6">
+                                    <small class="text-muted">Manager:</small><br>
+                                    <small>sarah.davis / password123</small>
+                                </div>
+                            </div>
+                            <div class="row mt-2">
+                                <div class="col-6">
+                                    <small class="text-muted">Supervisor:</small><br>
+                                    <small>alice.wilson / password123</small>
+                                </div>
+                                <div class="col-6">
+                                    <small class="text-muted">HR:</small><br>
+                                    <small>hr.admin / password123</small>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Toast Container -->
+    <div class="toast-container position-fixed bottom-0 end-0 p-3"></div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="app.js"></script>
+    <script>
+        // The script tag is placed after the form in the DOM, so attach the handler directly.
+        (function() {
+            const form = document.getElementById('loginForm');
+            if (!form) return;
+
+            form.addEventListener('submit', function(e) {
+                e.preventDefault();
+
+                const usernameEl = document.getElementById('username');
+                const passwordEl = document.getElementById('password');
+                const username = usernameEl ? usernameEl.value.trim() : '';
+                const password = passwordEl ? passwordEl.value.trim() : '';
+
+                if (!username || !password) {
+                    if (typeof showToast === 'function') showToast('Please enter both username and password', 'warning');
+                    console.warn('Login attempt with empty username or password');
+                    return;
+                }
+
+                if (typeof login !== 'function') {
+                    console.error('login() is not available. Ensure app.js is loaded.');
+                    if (typeof showToast === 'function') showToast('Internal error: login not available', 'danger');
+                    return;
+                }
+
+                const user = login(username, password);
+
+                if (user) {
+                    const canonical = (typeof getUserByUsername === 'function' && getUserByUsername(user.username)) || user;
+                    if (typeof showToast === 'function') showToast(`Welcome back, ${canonical.name}!`, 'success');
+
+                    setTimeout(() => {
+                        switch (canonical.role) {
+                            case 'employee':
+                                window.location.href = 'employee_home_page.html';
+                                break;
+                            case 'manager':
+                                window.location.href = 'manager_home_page.html';
+                                break;
+                            case 'supervisor':
+                                // Repository file uses 'supervisorrr_home_page.html'
+                                window.location.href = 'supervisorrr_home_page.html';
+                                break;
+                            case 'hr':
+                                window.location.href = 'hr_dashboard.html';
+                                break;
+                            default:
+                                window.location.href = 'employee_home_page.html';
+                        }
+                    }, 800);
+                } else {
+                    if (typeof showToast === 'function') showToast('Invalid username or password', 'danger');
+                    console.info('Failed login for', username);
+                }
+            });
+        })();
+    </script>
+</body>
+</html>

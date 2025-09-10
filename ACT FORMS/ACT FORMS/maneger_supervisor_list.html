@@ -1,0 +1,705 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Manager List - Supervisor Dashboard</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <link href="styles.css" rel="stylesheet">
+</head>
+<body>
+    <nav class="navbar navbar-expand-lg">
+        <div class="container-fluid">
+            <a class="navbar-brand" href="#">
+                <i class="fas fa-chart-line me-2"></i>ACT Performance System
+            </a>
+            <div class="ms-auto d-flex align-items-center">
+                <span class="me-3 fw-bold" id="currentUser"></span>
+                <button class="btn btn-outline-danger" onclick="logout()">
+                    <i class="fas fa-sign-out-alt me-1"></i>Logout
+                </button>
+            </div>
+        </div>
+    </nav>
+
+    <div class="container mt-4">
+        <div class="row">
+            <div class="col-12">
+                <div class="card">
+                    <div class="card-header d-flex justify-content-between align-items-center">
+                        <h4 class="mb-0">
+                            <i class="fas fa-user-tie me-2"></i>
+                            <span id="pageTitle">supervisor List</span>
+                        </h4>
+                        <button class="btn btn-outline-secondary" onclick="goBack()">
+                            <i class="fas fa-arrow-left me-2"></i>
+                            <span id="backButton">Back to Dashboard</span>
+                        </button>
+                    </div>
+                    <div class="card-body">
+                        <div class="row mb-3">
+                            <div class="col-md-6">
+                                <div class="input-group">
+                                    <span class="input-group-text">
+                                        <i class="fas fa-search"></i>
+                                    </span>
+                                    <input type="text" class="form-control" id="searchInput" 
+                                        placeholder="Search managers...">
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <select class="form-select" id="statusFilter">
+                                    <option value="all" id="allStatus">All Status</option>
+                                    <option value="completed" id="completedStatus">Completed</option>
+                                    <option value="pending" id="pendingStatus">Pending</option>
+                                </select>
+                            </div>
+                        </div>
+
+                        <div class="table-responsive">
+                            <table class="table table-hover">
+                                <thead>
+                                    <tr>
+                                        <th id="nameHeader">Name</th>
+                                        <th id="departmentHeader">Department</th>
+                                        <th id="selfEvalHeader">Self Evaluation</th>
+                                        <th id="supervisorEvalHeader">Supervisor Evaluation</th>
+                                        <th id="overallStatusHeader">Overall Status</th>
+                                        <th id="actionsHeader">Actions</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="managersTableBody">
+                                    <!-- Manager rows will be loaded here -->
+                                </tbody>
+                            </table>
+                        </div>
+
+                        <div id="noManagersMessage" class="text-center py-5" style="display: none;">
+                            <i class="fas fa-user-tie fa-3x text-muted mb-3"></i>
+                            <h5 class="text-muted" id="noManagersText">No managers found</h5>
+                            <div class="mt-3">
+                                <button class="btn btn-sm btn-outline-secondary" onclick="loadSampleData()">Load sample data (debug)</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Toast Container -->
+    <div class="toast-container position-fixed bottom-0 end-0 p-3"></div>
+
+    <!-- Manager Detail Modal -->
+    <div class="modal fade" id="managerDetailModal" tabindex="-1" aria-labelledby="managerDetailLabel" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered modal-lg">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="managerDetailLabel">Manager Details</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="d-flex align-items-center mb-3">
+                        <div class="avatar bg-warning text-white rounded-circle me-3 d-flex align-items-center justify-content-center" style="width:60px;height:60px;font-size:24px;">
+                            <span id="mgrAvatar">M</span>
+                        </div>
+                        <div>
+                            <h5 id="mgrName" class="mb-0">Manager Name</h5>
+                            <small class="text-muted" id="mgrId">ID</small>
+                            <div id="mgrDept" class="text-muted">Department</div>
+                            <div id="mgrSupervisorInfo" class="text-muted small">Supervisor: -</div>
+                        </div>
+                    </div>
+
+                    <div class="row">
+                        <div class="col-md-6">
+                            <p><strong>Email:</strong> <span id="mgrEmail">-</span></p>
+                            <p><strong>Phone:</strong> <span id="mgrPhone">-</span></p>
+                        </div>
+                        <div class="col-md-6">
+                            <p><strong>Self Evaluation:</strong> <span id="mgrSelfStatus" class="badge bg-warning">Pending</span></p>
+                            <p><strong>Supervisor Evaluation:</strong> <span id="mgrSupervisorStatus" class="badge bg-warning">Pending</span></p>
+                            <p><strong>Overall:</strong> <span id="mgrOverallStatus" class="badge bg-warning">Pending</span></p>
+                        </div>
+                    </div>
+
+                    <hr>
+
+                    <div id="mgrSelfAnswersContainer">
+                        <!-- short preview of self answers -->
+                    </div>
+
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="app.js"></script>
+    <script>
+        let currentLanguage = localStorage.getItem('currentLanguage') || 'en';
+        let allManagers = [];
+        let filteredManagers = [];
+
+        const translations = {
+            en: {
+                pageTitle: "Manager List",
+                backButton: "Back to Dashboard",
+                nameHeader: "Name",
+                departmentHeader: "Department",
+                selfEvalHeader: "Self Evaluation",
+                supervisorEvalHeader: "Supervisor Evaluation",
+                overallStatusHeader: "Overall Status",
+                actionsHeader: "Actions",
+                allStatus: "All Status",
+                completedStatus: "Completed",
+                pendingStatus: "Pending",
+                noManagersText: "No managers found",
+                completed: "Completed",
+                pending: "Pending",
+                evaluateButton: "Evaluate",
+                viewButton: "View"
+            },
+            ar: {
+                pageTitle: "قائمة المديرين",
+                backButton: "رجوع للوحة الرئيسية",
+                nameHeader: "الاسم",
+                departmentHeader: "القسم",
+                selfEvalHeader: "التقييم الذاتي",
+                supervisorEvalHeader: "تقييم المشرف",
+                overallStatusHeader: "الحالة العامة",
+                actionsHeader: "الإجراءات",
+                allStatus: "جميع الحالات",
+                completedStatus: "مكتمل",
+                pendingStatus: "معلق",
+                noManagersText: "لم يتم العثور على مديرين",
+                completed: "مكتمل",
+                pending: "معلق",
+                evaluateButton: "تقييم",
+                viewButton: "عرض"
+            }
+        };
+
+        function updateLanguage() {
+            const t = translations[currentLanguage];
+            document.getElementById('pageTitle').textContent = t.pageTitle;
+            document.getElementById('backButton').textContent = t.backButton;
+            document.getElementById('nameHeader').textContent = t.nameHeader;
+            document.getElementById('departmentHeader').textContent = t.departmentHeader;
+            document.getElementById('selfEvalHeader').textContent = t.selfEvalHeader;
+            document.getElementById('supervisorEvalHeader').textContent = t.supervisorEvalHeader;
+            document.getElementById('overallStatusHeader').textContent = t.overallStatusHeader;
+            document.getElementById('actionsHeader').textContent = t.actionsHeader;
+            document.getElementById('allStatus').textContent = t.allStatus;
+            document.getElementById('completedStatus').textContent = t.completedStatus;
+            document.getElementById('pendingStatus').textContent = t.pendingStatus;
+            document.getElementById('noManagersText').textContent = t.noManagersText;
+
+            if (currentLanguage === 'ar') {
+                document.body.classList.add('arabic-text');
+            } else {
+                document.body.classList.remove('arabic-text');
+            }
+        }
+
+        function loadManagers() {
+            const currentUser = getCurrentUser();
+            if (!currentUser) return;
+
+            // Try helper first
+            try {
+                const helper = typeof getManagersBySupervisor === 'function' ? getManagersBySupervisor(currentUser.id) : null;
+                if (Array.isArray(helper) && helper.length) {
+                    allManagers = helper.map(m => ({
+                        id: m.id,
+                        name: m.name || (getUserById(m.id)?.name) || m.id,
+                        department: m.department || (getUserById(m.id)?.department) || '',
+                        selfEvaluation: m.selfEvaluation || {},
+                        supervisorEvaluation: m.supervisorEvaluation || {},
+                        supervisorId: m.supervisorId || (m.supervisor && m.supervisor.id) || (m.supervisorEvaluation && m.supervisorEvaluation.supervisorId) || ''
+                    }));
+                } else {
+                    // Fallback: scan canonical evaluations for role === 'manager' supervised by currentUser
+                    const evaluations = JSON.parse(localStorage.getItem('evaluations') || '[]');
+                    const users = getUsers ? getUsers() : (JSON.parse(localStorage.getItem('users') || '[]'));
+
+                    // managers from evaluations where role is manager and supervisorId matches, or where user's supervisorId matches
+                    const candidates = [];
+
+                    // first from evaluations
+                    evaluations.forEach(ev => {
+                        if (!ev) return;
+                        const role = (ev.role || '').toString().toLowerCase();
+                        const supervisorMatch = ev.supervisorId && String(ev.supervisorId) === String(currentUser.id);
+                        if (role === 'manager' && supervisorMatch) candidates.push(ev);
+                    });
+
+                    // then from users if none found or to supplement
+                    const userCandidates = (users || []).filter(u => u && (u.role || '').toLowerCase() === 'manager' && String(u.supervisorId) === String(currentUser.id));
+                    userCandidates.forEach(u => {
+                        // avoid duplicates
+                        if (!candidates.find(c => String(c.id) === String(u.id))) candidates.push(u);
+                    });
+
+                    // normalize
+                    allManagers = candidates.map(m => {
+                        const ev = (evaluations || []).find(x => x && String(x.id) === String(m.id)) || {};
+                        const user = getUserById(m.id) || {};
+                        return {
+                            id: m.id || user.id,
+                            name: m.name || ev.name || user.name || (m.id || ''),
+                            department: ev.department || m.department || user.department || '',
+                            selfEvaluation: ev.selfEvaluation || {},
+                            supervisorEvaluation: ev.supervisorEvaluation || {},
+                            supervisorId: ev.supervisorId || (ev.supervisor && ev.supervisor.id) || user.supervisorId || m.supervisorId || (m.supervisor && m.supervisor.id) || ''
+                        };
+                    });
+                }
+            } catch (e) {
+                console.error('Error loading managers via helper, falling back to users:', e);
+                const users = getUsers ? getUsers() : (JSON.parse(localStorage.getItem('users') || '[]'));
+                const candidates = (users || []).filter(u => u && (u.role || '').toLowerCase() === 'manager' && String(u.supervisorId) === String(currentUser.id));
+                allManagers = candidates.map(u => ({ id: u.id, name: u.name, department: u.department || '', selfEvaluation: {}, supervisorEvaluation: {}, supervisorId: u.supervisorId || '' }));
+            }
+
+            // If nothing found for this supervisor, as a last-resort show all managers (helps debugging and ensures table isn't empty)
+            try {
+                if ((!allManagers || allManagers.length === 0)) {
+                    console.info('No managers found for current supervisor — falling back to show all managers');
+                    const usersAll = getUsers ? getUsers() : (JSON.parse(localStorage.getItem('users') || '[]')) || [];
+                    const evaluationsAll = JSON.parse(localStorage.getItem('evaluations') || '[]') || [];
+
+                    // combine unique manager ids from users and evaluations
+                    const managerMap = new Map();
+
+                    usersAll.forEach(u => {
+                        if (!u) return;
+                        const role = (u.role || '').toString().toLowerCase();
+                        if (role === 'manager') {
+                            managerMap.set(String(u.id), { id: u.id, name: u.name || '', department: u.department || '', selfEvaluation: {}, supervisorEvaluation: {}, supervisorId: u.supervisorId || '' });
+                        }
+                    });
+
+                    evaluationsAll.forEach(ev => {
+                        if (!ev) return;
+                        const role = (ev.role || '').toString().toLowerCase();
+                        if (role === 'manager') {
+                            const key = String(ev.id);
+                            const existing = managerMap.get(key) || {};
+                            managerMap.set(key, {
+                                id: ev.id,
+                                name: ev.name || existing.name || ev.id,
+                                department: ev.department || existing.department || '',
+                                selfEvaluation: ev.selfEvaluation || existing.selfEvaluation || {},
+                                supervisorEvaluation: ev.supervisorEvaluation || existing.supervisorEvaluation || {},
+                                supervisorId: ev.supervisorId || (ev.supervisor && ev.supervisor.id) || existing.supervisorId || ''
+                            });
+                        }
+                    });
+
+                    const fallbackList = Array.from(managerMap.values());
+                    if (fallbackList.length) allManagers = fallbackList;
+                }
+            } catch (e) {
+                console.error('Fallback gathering of all managers failed', e);
+            }
+
+            filteredManagers = [...allManagers];
+            renderManagers();
+        }
+
+        function renderManagers() {
+            const tbody = document.getElementById('managersTableBody');
+            const noManagersMessage = document.getElementById('noManagersMessage');
+            const t = translations[currentLanguage];
+
+            if (filteredManagers.length === 0) {
+                tbody.innerHTML = '';
+                noManagersMessage.style.display = 'block';
+                return;
+            }
+
+            noManagersMessage.style.display = 'none';
+            tbody.innerHTML = '';
+
+            filteredManagers.forEach(manager => {
+                const selfEvalStatus = manager.selfEvaluation?.completed ? t.completed : t.pending;
+                const supervisorEvalStatus = manager.supervisorEvaluation?.completed ? t.completed : t.pending;
+                const overallStatus = (manager.selfEvaluation?.completed && manager.supervisorEvaluation?.completed) ? t.completed : t.pending;
+                // try to resolve supervisor for display with many fallbacks
+                let supervisorName = '';
+                // collect candidate ids/objects from multiple shapes
+                const supCandidates = [
+                    manager.supervisorId,
+                    manager.supervisor?.id,
+                    manager.supervisor, // sometimes a string
+                    manager.supervisor?.userId,
+                    manager.supervisor?.user?.id,
+                    manager.supervisorEvaluation && manager.supervisorEvaluation.supervisorId,
+                    manager.supervisorEvaluation && manager.supervisorEvaluation.supervisor && manager.supervisorEvaluation.supervisor.id,
+                    manager.supervisorEvaluation && manager.supervisorEvaluation.supervisor && manager.supervisorEvaluation.supervisor.userId
+                ].filter(Boolean);
+
+                let supervisorId = supCandidates.length ? supCandidates[0] : '';
+
+                // direct name fields
+                if (!supervisorName && manager.supervisor && (manager.supervisor.name || manager.supervisor.fullName)) supervisorName = manager.supervisor.name || manager.supervisor.fullName;
+                if (!supervisorName && manager.supervisorEvaluation && manager.supervisorEvaluation.supervisor && (manager.supervisorEvaluation.supervisor.name || manager.supervisorEvaluation.supervisor.fullName)) {
+                    supervisorName = manager.supervisorEvaluation.supervisor.name || manager.supervisorEvaluation.supervisor.fullName;
+                    supervisorId = supervisorId || manager.supervisorEvaluation.supervisor.id || manager.supervisorEvaluation.supervisor.userId || '';
+                }
+                // if supervisorId matches current user, use current user's name
+                try {
+                    const cu = getCurrentUser ? getCurrentUser() : null;
+                    if (!supervisorName && supervisorId && cu && String(supervisorId) === String(cu.id)) supervisorName = cu.name;
+                } catch (e) {}
+                // last-resort: lookup by id via getUserById, users or evaluations
+                if (!supervisorName && supervisorId) {
+                    try {
+                        const supUser = (typeof getUserById === 'function') ? getUserById(supervisorId) : null;
+                        if (supUser && supUser.name) supervisorName = supUser.name;
+                        else {
+                            const usersAll = JSON.parse(localStorage.getItem('users') || '[]');
+                            const u = (usersAll || []).find(x => x && String(x.id) === String(supervisorId));
+                            if (u && u.name) supervisorName = u.name;
+                            else {
+                                const evaluationsAll = JSON.parse(localStorage.getItem('evaluations') || '[]');
+                                const supEv = (evaluationsAll || []).find(ev => ev && String(ev.id) === String(supervisorId));
+                                if (supEv && supEv.name) supervisorName = supEv.name;
+                            }
+                        }
+                    } catch (e) {
+                        supervisorName = supervisorId;
+                    }
+                }
+                // debug: if still not found, try to guess by role in users list (if any user has role 'supervisor' and links to this manager)
+                if (!supervisorName) {
+                    try {
+                        const usersAll = JSON.parse(localStorage.getItem('users') || '[]');
+                        const guess = (usersAll || []).find(u => u && ((u.role || '').toLowerCase().includes('supervisor')) && (String(u.id) === String(supervisorId) || (u.manages && u.manages.includes && u.manages.includes(manager.id))));
+                        if (guess && guess.name) supervisorName = guess.name;
+                    } catch (e) {}
+                }
+
+                // small debug output to console to help troubleshooting when supervisor not shown
+                if (!supervisorName) console.debug('Supervisor resolution failed for manager', manager.id, 'candidates:', supCandidates);
+
+                const row = `
+                    <tr data-manager-id="${manager.id}">
+                        <td>
+                            <div class="d-flex align-items-center">
+                                <div class="avatar bg-warning text-white rounded-circle me-3 d-flex align-items-center justify-content-center" style="width: 40px; height: 40px;">
+                                    ${(manager.name || '').charAt(0).toUpperCase()}
+                                </div>
+                                <div>
+                                    <div class="fw-bold">${manager.name}</div>
+                                    <small class="text-muted">${manager.id}</small>
+                                    <div class="text-muted small">Supervisor: ${supervisorName || '-'} <span class="text-muted">(id: ${supervisorId || '-'})</span></div>
+                                </div>
+                            </div>
+                        </td>
+                        <td>${manager.department}</td>
+                        <td>
+                            <span class="badge ${manager.selfEvaluation?.completed ? 'bg-success' : 'bg-warning'}">
+                                ${selfEvalStatus}
+                            </span>
+                        </td>
+                        <td>
+                            <span class="badge ${manager.supervisorEvaluation?.completed ? 'bg-success' : 'bg-warning'}">
+                                ${supervisorEvalStatus}
+                            </span>
+                        </td>
+                        <td>
+                            <span class="badge ${overallStatus === t.completed ? 'bg-success' : 'bg-warning'}">
+                                ${overallStatus}
+                            </span>
+                        </td>
+                        <td>
+                                    <button class="btn btn-sm btn-primary me-2" onclick="startSupervisorEvaluation('${manager.id}')">
+                                <i class="fas fa-edit me-1"></i>
+                                ${t.evaluateButton}
+                            </button>
+                            <button class="btn btn-sm btn-outline-info me-2" onclick="viewManagerDetails('${manager.id}')">
+                                <i class="fas fa-eye me-1"></i>
+                                ${t.viewButton}
+                            </button>
+                            
+                        </td>
+                    </tr>
+                `;
+                tbody.insertAdjacentHTML('beforeend', row);
+            });
+        }
+
+        function filterManagers() {
+            const searchTerm = document.getElementById('searchInput').value.toLowerCase();
+            const statusFilter = document.getElementById('statusFilter').value;
+
+            filteredManagers = allManagers.filter(manager => {
+                const matchesSearch = manager.name.toLowerCase().includes(searchTerm) ||
+                                    manager.department.toLowerCase().includes(searchTerm) ||
+                                    manager.id.toLowerCase().includes(searchTerm);
+                
+                let matchesStatus = true;
+                if (statusFilter === 'completed') {
+                    matchesStatus = manager.selfEvaluation?.completed && manager.supervisorEvaluation?.completed;
+                } else if (statusFilter === 'pending') {
+                    matchesStatus = !(manager.selfEvaluation?.completed && manager.supervisorEvaluation?.completed);
+                }
+
+                return matchesSearch && matchesStatus;
+            });
+
+            renderManagers();
+        }
+
+        function viewManagerDetails(managerId) {
+            // Resolve canonical evaluation by id first
+            const evaluationsAll = JSON.parse(localStorage.getItem('evaluations') || '[]');
+            let evalRecord = evaluationsAll.find(ev => ev && String(ev.id) === String(managerId));
+
+            // fallback to helper
+            if (!evalRecord && typeof getEvaluationById === 'function') {
+                evalRecord = getEvaluationById(managerId) || evalRecord;
+            }
+
+            // fallback to users
+            let userRecord = null;
+            if (!evalRecord) {
+                try { userRecord = getUserById(managerId); } catch (e) { userRecord = null; }
+            } else {
+                userRecord = getUserById(evalRecord.id) || null;
+            }
+
+            // try transient stored self answers
+            let transient = null;
+            try {
+                const tkey = localStorage.getItem('employee_self_answers_' + managerId) || localStorage.getItem('employee_self_answers');
+                if (tkey) {
+                    try { transient = JSON.parse(tkey); } catch (e) { transient = null; }
+                }
+            } catch (e) { transient = null; }
+
+            const manager = {
+                id: (evalRecord && evalRecord.id) || (userRecord && userRecord.id) || managerId,
+                name: (evalRecord && evalRecord.name) || (userRecord && userRecord.name) || managerId,
+                department: (evalRecord && evalRecord.department) || (userRecord && userRecord.department) || '',
+                email: (evalRecord && evalRecord.email) || (userRecord && userRecord.email) || '',
+                phone: (userRecord && userRecord.phone) || (evalRecord && evalRecord.phone) || '',
+                selfEvaluation: (evalRecord && evalRecord.selfEvaluation) || (transient && (transient.answers ? { answers: transient.answers, comments: transient.comments, reason: transient.reason, completed: !!transient.completed } : transient)) || {},
+                supervisorEvaluation: (evalRecord && evalRecord.supervisorEvaluation) || {}
+            };
+
+            if (!manager) {
+                showToast('Manager not found', 'warning');
+                return;
+            }
+
+            // populate modal fields
+            document.getElementById('mgrAvatar').textContent = manager.name ? manager.name.charAt(0).toUpperCase() : '-';
+            document.getElementById('mgrName').textContent = manager.name || '-';
+            document.getElementById('mgrId').textContent = manager.id || '-';
+            document.getElementById('mgrDept').textContent = manager.department || '-';
+            document.getElementById('mgrEmail').textContent = manager.email || '-';
+            document.getElementById('mgrPhone').textContent = manager.phone || '-';
+
+            // populate supervisor info in modal
+            try {
+                const supInfoEl = document.getElementById('mgrSupervisorInfo');
+                let supervisorId = '';
+                // prefer explicit fields from evalRecord or supervisorEvaluation
+                if (evalRecord && (evalRecord.supervisorId || (evalRecord.supervisor && evalRecord.supervisor.id))) {
+                    supervisorId = evalRecord.supervisorId || (evalRecord.supervisor && evalRecord.supervisor.id) || '';
+                }
+                if (!supervisorId && manager.supervisorEvaluation && manager.supervisorEvaluation.supervisorId) {
+                    supervisorId = manager.supervisorEvaluation.supervisorId;
+                }
+                if (!supervisorId && userRecord && userRecord.supervisorId) {
+                    supervisorId = userRecord.supervisorId;
+                }
+
+                let supervisorName = '';
+                let supervisorEmail = '';
+                let supervisorPhone = '';
+
+                if (supervisorId) {
+                    try {
+                        const supUser = (typeof getUserById === 'function') ? getUserById(supervisorId) : null;
+                        if (supUser) {
+                            supervisorName = supUser.name || '';
+                            supervisorEmail = supUser.email || '';
+                            supervisorPhone = supUser.phone || '';
+                        } else {
+                            const usersAll = JSON.parse(localStorage.getItem('users') || '[]');
+                            const u = (usersAll || []).find(x => x && String(x.id) === String(supervisorId));
+                            if (u) {
+                                supervisorName = u.name || '';
+                                supervisorEmail = u.email || '';
+                                supervisorPhone = u.phone || '';
+                            } else {
+                                const evaluationsAll = JSON.parse(localStorage.getItem('evaluations') || '[]');
+                                const supEv = (evaluationsAll || []).find(ev => ev && String(ev.id) === String(supervisorId));
+                                if (supEv) {
+                                    supervisorName = supEv.name || '';
+                                    supervisorEmail = supEv.email || '';
+                                    supervisorPhone = supEv.phone || '';
+                                }
+                            }
+                        }
+                    } catch (e) {
+                        supervisorName = supervisorId;
+                    }
+                }
+
+                if (supInfoEl) {
+                    if (supervisorName || supervisorEmail || supervisorPhone) {
+                        let html = '<strong>' + (currentLanguage === 'ar' ? 'المشرف:' : 'Supervisor:') + '</strong> ' + (supervisorName || supervisorId);
+                        if (supervisorEmail) html += '<div class="text-muted small">' + (currentLanguage === 'ar' ? 'البريد:' : 'Email:') + ' ' + supervisorEmail + '</div>';
+                        if (supervisorPhone) html += '<div class="text-muted small">' + (currentLanguage === 'ar' ? 'الهاتف:' : 'Phone:') + ' ' + supervisorPhone + '</div>';
+                        supInfoEl.innerHTML = html;
+                    } else {
+                        supInfoEl.textContent = (currentLanguage === 'ar' ? 'المشرف: -' : 'Supervisor: -');
+                    }
+                }
+            } catch (e) {
+                // ignore
+            }
+
+            const t = translations[currentLanguage];
+
+            const selfDone = !!(manager.selfEvaluation && manager.selfEvaluation.completed);
+            const supDone = !!(manager.supervisorEvaluation && manager.supervisorEvaluation.completed);
+            const overallDone = selfDone && supDone;
+
+            const selfStatusEl = document.getElementById('mgrSelfStatus');
+            const supStatusEl = document.getElementById('mgrSupervisorStatus');
+            const overallEl = document.getElementById('mgrOverallStatus');
+
+            selfStatusEl.textContent = selfDone ? t.completed : t.pending;
+            supStatusEl.textContent = supDone ? t.completed : t.pending;
+            overallEl.textContent = overallDone ? t.completed : t.pending;
+
+            selfStatusEl.className = 'badge ' + (selfDone ? 'bg-success' : 'bg-warning');
+            supStatusEl.className = 'badge ' + (supDone ? 'bg-success' : 'bg-warning');
+            overallEl.className = 'badge ' + (overallDone ? 'bg-success' : 'bg-warning');
+
+            // render self answers
+            const previewContainer = document.getElementById('mgrSelfAnswersContainer');
+            previewContainer.innerHTML = '';
+            const se = manager.selfEvaluation || {};
+            const answers = se.answers || {};
+            const comments = se.comments || {};
+            const keys = Object.keys(answers).filter(k => k.startsWith('answer')).sort((a,b)=>{
+                const ai = parseInt(a.replace('answer','')) || 0;
+                const bi = parseInt(b.replace('answer','')) || 0;
+                return ai - bi;
+            });
+
+            if (keys.length) {
+                const list = document.createElement('div');
+                list.innerHTML = '<h6>' + (currentLanguage === 'ar' ? 'إجابات التقييم الذاتي' : 'Self Evaluation Answers') + '</h6>';
+                keys.forEach(k => {
+                    const idx = k.replace('answer','');
+                    const text = answers[k] || '';
+                    const comment = comments['comment' + idx] || '';
+                    const item = document.createElement('div');
+                    item.className = 'mb-2';
+                    item.innerHTML = `<small class="text-muted">Q${parseInt(idx)+1}:</small> <div>${text}</div>` + (comment ? `<div class="text-muted small">${currentLanguage === 'ar' ? 'تعليق:' : 'Comment:'} ${comment}</div>` : '');
+                    list.appendChild(item);
+                });
+                if (se.reason) {
+                    const r = document.createElement('div');
+                    r.className = 'mt-3';
+                    r.innerHTML = `<strong>${currentLanguage === 'ar' ? 'السبب العام:' : 'Overall Reason:'}</strong><div>${se.reason}</div>`;
+                    list.appendChild(r);
+                }
+                previewContainer.appendChild(list);
+            } else if (se && (se.reason || (transient && (transient.reason)))) {
+                const div = document.createElement('div');
+                div.className = 'text-muted';
+                div.innerHTML = `<strong>${currentLanguage === 'ar' ? 'السبب العام:' : 'Overall Reason:'}</strong><div>${se.reason || (transient && transient.reason) || ''}</div>`;
+                previewContainer.appendChild(div);
+            } else {
+                previewContainer.innerHTML = '<div class="text-muted">' + (currentLanguage === 'ar' ? 'لا توجد إجابات للتقييم الذاتي' : 'No self evaluation answers yet') + '</div>';
+            }
+
+            // show modal
+            const modalEl = document.getElementById('managerDetailModal');
+            const modal = new bootstrap.Modal(modalEl);
+            modal.show();
+        }
+
+        function goBack() {
+            window.location.href = 'supervisor_home_page.html';
+        }
+
+        function toggleRaw(managerId) {
+            try {
+                const tbody = document.getElementById('managersTableBody');
+                const existing = document.querySelector('tr[data-raw-for="' + managerId + '"]');
+                if (existing) { existing.remove(); return; }
+
+                // find manager in filteredManagers or allManagers
+                const m = (filteredManagers || []).find(x => String(x.id) === String(managerId)) || (allManagers || []).find(x => String(x.id) === String(managerId));
+                const idxRow = document.querySelector('tr[data-manager-id="' + managerId + '"]');
+                const pre = document.createElement('tr');
+                pre.setAttribute('data-raw-for', managerId);
+                const td = document.createElement('td');
+                td.colSpan = 6;
+                const preEl = document.createElement('pre');
+                preEl.style.whiteSpace = 'pre-wrap';
+                preEl.textContent = JSON.stringify(m || { error: 'not found' }, null, 2);
+                td.appendChild(preEl);
+                pre.appendChild(td);
+                if (idxRow && idxRow.parentNode) idxRow.parentNode.insertBefore(pre, idxRow.nextSibling);
+            } catch (e) { console.error(e); }
+        }
+
+        function loadSampleData() {
+            try {
+                const users = [
+                    { id: 's1', name: 'Supervisor One', role: 'supervisor', email: 'sup1@example.com', phone: '0111000111' },
+                    { id: 's2', name: 'Supervisor Two', role: 'supervisor', email: 'sup2@example.com', phone: '0111000222' },
+                    { id: 'm1', name: 'Manager One', role: 'manager', supervisorId: 's1', department: 'Sales' },
+                    { id: 'm2', name: 'Manager Two', role: 'manager', supervisorId: 's2', department: 'HR' }
+                ];
+                const evaluations = [
+                    { id: 'm1', name: 'Manager One', role: 'manager', supervisorId: 's1', selfEvaluation: { completed: true, answers: { answer0: 'A' } }, supervisorEvaluation: { completed: false } },
+                    { id: 'm2', name: 'Manager Two', role: 'manager', supervisorId: 's2', selfEvaluation: { completed: false }, supervisorEvaluation: { completed: false } }
+                ];
+                localStorage.setItem('users', JSON.stringify(users));
+                localStorage.setItem('evaluations', JSON.stringify(evaluations));
+                localStorage.setItem('currentUser', JSON.stringify({ id: 's1', name: 'Supervisor One' }));
+                location.reload();
+            } catch (e) { console.error(e); }
+        }
+
+        function startSupervisorEvaluation(managerId) {
+            localStorage.setItem('evaluationType', 'supervisor');
+            localStorage.setItem('evaluationTarget', managerId);
+            window.location.href = 'manager_supervisor_evaluation.html';
+        }
+
+        // Initialize page
+        document.addEventListener('DOMContentLoaded', function() {
+            const currentUser = getCurrentUser();
+            if (!currentUser) {
+                window.location.href = 'login.html';
+                return;
+            }
+
+            document.getElementById('currentUser').textContent = currentUser.name;
+            updateLanguage();
+            loadManagers();
+
+            // Set up event listeners
+            document.getElementById('searchInput').addEventListener('input', filterManagers);
+            document.getElementById('statusFilter').addEventListener('change', filterManagers);
+        });
+    </script>
+</body>
+</html>

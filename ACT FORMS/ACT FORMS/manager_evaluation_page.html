@@ -1,0 +1,441 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Supervisor Evaluation - ACT Performance System</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <link href="styles.css" rel="stylesheet">
+</head>
+<body>
+    <nav class="navbar navbar-expand-lg">
+        <div class="container-fluid">
+            <a class="navbar-brand" href="#">
+                <i class="fas fa-chart-line me-2"></i>ACT Performance System
+            </a>
+            <div class="ms-auto d-flex align-items-center">
+                <span class="me-3 fw-bold" id="currentUser"></span>
+                <button class="btn btn-outline-danger" onclick="logout()">
+                    <i class="fas fa-sign-out-alt me-1"></i>Logout
+                </button>
+            </div>
+        </div>
+    </nav>
+
+    <div class="container mt-4">
+        <div class="row">
+            <div class="col-12">
+                <div class="card">
+                    <div class="card-header d-flex justify-content-between align-items-start">
+                        <div>
+                            <h4 class="mb-0">
+                                <i class="fas fa-users-cog me-2"></i>
+                                <span id="evaluationTitle">Supervisor Evaluation</span>
+                            </h4>
+                            <p class="mb-0 mt-2" id="evaluationSubtitle">Evaluate your subordinate's performance</p>
+                        </div>
+                        <div class="d-flex align-items-center">
+                            <button id="editButton" type="button" class="btn btn-outline-secondary btn-sm me-2" onclick="toggleEdit()">
+                                <i class="fas fa-edit me-1"></i>
+                                <span id="editButtonText">Edit</span>
+                            </button>
+                            <button id="resetButton" type="button" class="btn btn-outline-warning btn-sm" onclick="resetForm()" disabled>
+                                <i class="fas fa-undo me-1"></i>
+                                <span id="resetButtonText">Reset</span>
+                            </button>
+                        </div>
+                    </div>
+                    <div class="card-body">
+                        <div class="alert alert-info" id="employeeInfo">
+                            <i class="fas fa-info-circle me-2"></i>
+                            <span id="employeeInfoText">Loading employee information...</span>
+                        </div>
+
+                        <form id="evaluationForm">
+                            <div id="questionsContainer">
+                                <!-- Questions will be dynamically loaded here -->
+                            </div>
+                            
+                            <!-- Overall rating removed per request -->
+                            
+                            <div class="mt-4">
+                                <label for="overallReason" class="form-label">
+                                    <strong id="overallReasonLabel">Overall Assessment and Strategic Recommendations</strong>
+                                </label>
+                                <textarea class="form-control" id="overallReason" name="reason" rows="4" 
+                                    placeholder="Please provide your overall assessment, strategic insights, and recommendations for development..."></textarea>
+                            </div>
+                            
+                            <div class="mt-4 d-flex justify-content-between">
+                                <button type="button" class="btn btn-secondary" onclick="goBack()">
+                                    <i class="fas fa-arrow-left me-2"></i>
+                                    <span id="backButton">Back</span>
+                                </button>
+                                <button type="submit" class="btn btn-primary">
+                                    <i class="fas fa-save me-2"></i>
+                                    <span id="saveButton">Save Evaluation</span>
+                                </button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Toast Container -->
+    <div class="toast-container position-fixed bottom-0 end-0 p-3"></div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="app.js"></script>
+    <script>
+        let currentLanguage = localStorage.getItem('currentLanguage') || 'en';
+        let evaluationType = localStorage.getItem('evaluationType');
+        let targetId = localStorage.getItem('evaluationTarget');
+        let targetEmployee = null;
+
+        const translations = {
+            en: {
+                evaluationTitle: "Supervisor Evaluation",
+                evaluationSubtitle: "Evaluate your subordinate's performance",
+                employeeInfoText: "Loading employee information...",
+                overallRatingLabel: "Overall Performance Rating",
+                overallReasonLabel: "Overall Assessment and Strategic Recommendations",
+                backButton: "Back",
+                saveButton: "Save Evaluation",
+                questionLabel: "Question",
+                ratingLabel: "Rating",
+                answerLabel: "Your Assessment",
+                commentLabel: "Additional Comments",
+                excellentOption: "Excellent",
+                goodOption: "Good",
+                satisfactoryOption: "Satisfactory",
+                needsImprovementOption: "Needs Improvement"
+            },
+            ar: {
+                evaluationTitle: "تقييم المشرف",
+                evaluationSubtitle: "قيم أداء مرؤوسك",
+                employeeInfoText: "جاري تحميل معلومات الموظف...",
+                overallRatingLabel: "التقييم العام للأداء",
+                overallReasonLabel: "التقييم العام والتوصيات الاستراتيجية",
+                backButton: "رجوع",
+                saveButton: "حفظ التقييم",
+                questionLabel: "السؤال",
+                ratingLabel: "التقييم",
+                answerLabel: "تقييمك",
+                commentLabel: "تعليقات إضافية",
+                excellentOption: "ممتاز",
+                goodOption: "جيد",
+                satisfactoryOption: "مقبول",
+                needsImprovementOption: "يحتاج تحسين"
+            }
+        };
+
+        function updateLanguage() {
+            const t = translations[currentLanguage];
+            document.getElementById('evaluationTitle').textContent = t.evaluationTitle;
+            document.getElementById('evaluationSubtitle').textContent = t.evaluationSubtitle;
+            document.getElementById('overallRatingLabel').textContent = t.overallRatingLabel;
+            document.getElementById('overallReasonLabel').textContent = t.overallReasonLabel;
+            document.getElementById('backButton').textContent = t.backButton;
+            document.getElementById('saveButton').textContent = t.saveButton;
+            
+            // Update select options
+            document.getElementById('excellentOption').textContent = t.excellentOption;
+            document.getElementById('goodOption').textContent = t.goodOption;
+            document.getElementById('satisfactoryOption').textContent = t.satisfactoryOption;
+            document.getElementById('needsImprovementOption').textContent = t.needsImprovementOption;
+            
+            if (currentLanguage === 'ar') {
+                document.body.classList.add('arabic-text');
+            } else {
+                document.body.classList.remove('arabic-text');
+            }
+        }
+
+        function loadEmployeeInfo() {
+            if (!targetId) {
+                showToast('Invalid employee ID', 'danger');
+                setTimeout(goBack, 2000);
+                return;
+            }
+
+            targetEmployee = getUserById(targetId);
+            if (!targetEmployee) {
+                showToast('Employee not found', 'danger');
+                setTimeout(goBack, 2000);
+                return;
+            }
+
+            const employeeInfo = document.getElementById('employeeInfoText');
+            employeeInfo.textContent = `Evaluating: ${targetEmployee.name} (${targetEmployee.department}) - ${targetEmployee.role}`;
+        }
+
+        // keep original loaded values to support reset
+        let _loadedState = null;
+        let _isEditing = false;
+
+        function setEditing(editing) {
+            _isEditing = !!editing;
+            // enable/disable inputs accordingly
+            const inputs = document.querySelectorAll('#questionsContainer select[id^="rating"], #questionsContainer textarea, #overallReason');
+            inputs.forEach(i => i.disabled = !_isEditing);
+            document.getElementById('resetButton').disabled = !_isEditing;
+            document.getElementById('editButton').classList.toggle('btn-outline-secondary', !_isEditing);
+            document.getElementById('editButton').classList.toggle('btn-secondary', _isEditing);
+            document.getElementById('editButtonText').textContent = _isEditing ? (currentLanguage === 'ar' ? 'Editing' : 'Editing') : (currentLanguage === 'ar' ? 'تعديل' : 'Edit');
+        }
+
+        function toggleEdit() {
+            setEditing(!_isEditing);
+        }
+
+        function populateFromSaved() {
+            const evaluationRecord = getEvaluationById(targetId);
+            // load supervisorEvaluation if exists
+            const sup = evaluationRecord && evaluationRecord.supervisorEvaluation ? evaluationRecord.supervisorEvaluation : null;
+
+            // clear fields first
+            for (let i = 0; i < 8; i++) {
+                const aEl = document.getElementById('answer' + i);
+                const cEl = document.getElementById('comment' + i);
+                if (aEl) aEl.value = sup && sup.answers ? (sup.answers['answer' + i] || '') : '';
+                if (cEl) cEl.value = sup && sup.comments ? (sup.comments['comment' + i] || '') : '';
+            }
+
+            document.getElementById('overallReason').value = sup ? (sup.reason || '') : '';
+
+            // store snapshot for reset
+            _loadedState = {
+                answers: sup ? JSON.parse(JSON.stringify(sup.answers || {})) : {},
+                comments: sup ? JSON.parse(JSON.stringify(sup.comments || {})) : {},
+                overallRating: sup ? sup.overallRating || '' : '',
+                overallReason: sup ? sup.reason || '' : ''
+            };
+
+            // Default: not editing
+            setEditing(false);
+        }
+
+        function resetForm() {
+            if (!_isEditing) return; // reset only when editing
+            if (!_loadedState) return;
+            for (let i = 0; i < 8; i++) {
+                const sel = document.getElementById('rating' + i);
+                const cEl = document.getElementById('comment' + i);
+                if (sel) sel.value = _loadedState && _loadedState.ratings ? (_loadedState.ratings['rating' + i] || '') : '';
+                if (cEl) cEl.value = _loadedState.comments['comment' + i] || '';
+            }
+
+            document.getElementById('overallReason').value = _loadedState.overallReason || '';
+            showToast(currentLanguage === 'ar' ? 'تم إعادة الضبط إلى الحالة المحفوظة' : 'Reverted to loaded values', 'info');
+        }
+
+        function loadQuestions() {
+            const questionsContainer = document.getElementById('questionsContainer');
+            // resolve current evaluation record and any saved answers/ratings
+            const evaluationId = String(targetId || localStorage.getItem('evaluationTarget') || '').trim();
+            const evaluations = (typeof getEvaluations === 'function') ? getEvaluations() : JSON.parse(localStorage.getItem('evaluations') || '[]');
+            const users = (typeof getUsers === 'function') ? getUsers() : JSON.parse(localStorage.getItem('users') || '[]');
+            let evaluation = null;
+            if (evaluationId) {
+                evaluation = evaluations.find(e => e && String(e.id).trim() === evaluationId) || evaluations.find(e => e && e.name && String(e.name).trim() === evaluationId);
+            }
+            if (!evaluation && evaluationId) {
+                const t = evaluationId.toLowerCase();
+                evaluation = evaluations.find(e => e && e.name && String(e.name).trim().toLowerCase().includes(t));
+                if (!evaluation) {
+                    // try matching user id/username
+                    const userRecord = users.find(u => u && String(u.id).trim() === evaluationId) || users.find(u => u && u.username && String(u.username).trim() === evaluationId);
+                    if (userRecord) {
+                        evaluation = evaluations.find(e => e && String(e.id).trim() === String(userRecord.id).trim()) || evaluations.find(e => e && e.name && e.name === userRecord.name);
+                    }
+                }
+            }
+
+            // Prefer evaluatesManager answers, then selfEvaluation, then supervisorEvaluation
+            let savedAnswers = {};
+            if (evaluation) {
+                if (evaluation.evaluatesManager && evaluation.evaluatesManager.answers && Object.keys(evaluation.evaluatesManager.answers).length) savedAnswers = evaluation.evaluatesManager.answers;
+                else if (evaluation.selfEvaluation && evaluation.selfEvaluation.answers && Object.keys(evaluation.selfEvaluation.answers).length) savedAnswers = evaluation.selfEvaluation.answers;
+                else if (evaluation.supervisorEvaluation && evaluation.supervisorEvaluation.answers && Object.keys(evaluation.supervisorEvaluation.answers).length) savedAnswers = evaluation.supervisorEvaluation.answers;
+            }
+
+            // Define questions locally to ensure they're available
+            const questions = [
+                {
+                    en: "How effectively do you communicate with your team members and colleagues?",
+                    ar: "ما مدى فعاليتك في التواصل مع أعضاء فريقك وزملائك؟"
+                },
+                {
+                    en: "How well do you manage your time and prioritize tasks?",
+                    ar: "ما مدى جودة إدارتك للوقت وترتيب الأولويات؟"
+                },
+                {
+                    en: "How successfully do you adapt to changes in the workplace?",
+                    ar: "ما مدى نجاحك في التكيف مع التغييرات في مكان العمل؟"
+                },
+                {
+                    en: "How effectively do you collaborate with others on team projects?",
+                    ar: "ما مدى فعاليتك في التعاون مع الآخرين في المشاريع الجماعية؟"
+                },
+                {
+                    en: "How well do you demonstrate leadership qualities in your role?",
+                    ar: "ما مدى جودة إظهارك لصفات القيادة في دورك؟"
+                },
+                {
+                    en: "How effectively do you solve problems and make decisions?",
+                    ar: "ما مدى فعاليتك في حل المشكلات واتخاذ القرارات؟"
+                },
+                {
+                    en: "How well do you contribute to achieving organizational goals?",
+                    ar: "ما مدى جودة مساهمتك في تحقيق الأهداف التنظيمية؟"
+                },
+                {
+                    en: "How effectively do you handle feedback and criticism?",
+                    ar: "ما مدى فعاليتك في التعامل مع التغذية الراجعة والنقد؟"
+                }
+            ];
+            
+            // per-question rating removed by user request
+            
+            questionsContainer.innerHTML = '';
+            
+            questions.forEach((question, index) => {
+                const questionHtml = `
+                    <div class="question-card mb-3">
+                        <h6 class="question-text">${index + 1}. ${question.en}</h6>
+                        <p class="question-translation text-muted">${question.ar}</p>
+
+                        <div class="mb-3">
+                            <label for="rating${index}" class="form-label">Rating:</label>
+                            <select class="form-select" id="rating${index}" name="rating${index}">
+                                <option value="">-- Select --</option>
+                                <option value="1">1 - Strongly Disagree</option>
+                                <option value="2">2 - Disagree</option>
+                                <option value="3">3 - Neutral</option>
+                                <option value="4">4 - Agree</option>
+                                <option value="5">5 - Strongly Agree</option>
+                            </select>
+                        </div>
+
+                        <div class="mb-3">
+                            <label for="comment${index}" class="form-label">Additional Comments:</label>
+                            <textarea class="form-control" id="comment${index}" name="comment${index}" rows="2">${(savedAnswers[`comment${index}`]||'')}</textarea>
+                        </div>
+                    </div>
+                `;
+
+                questionsContainer.insertAdjacentHTML('beforeend', questionHtml);
+                // populate rating if available
+                const rv = (evaluation && evaluation.supervisorEvaluation && evaluation.supervisorEvaluation.ratings && evaluation.supervisorEvaluation.ratings[`rating${index}`])
+                    || (evaluation && evaluation.evaluatesManager && evaluation.evaluatesManager.ratings && evaluation.evaluatesManager.ratings[`rating${index}`])
+                    || '';
+                if (rv) {
+                    const sel = document.getElementById('rating' + index);
+                    if (sel) sel.value = rv;
+                }
+            });
+        }
+
+        function goBack() {
+            const currentUser = getCurrentUser();
+            if (!currentUser) {
+                window.location.href = 'login.html';
+                return;
+            }
+
+            switch (currentUser.role) {
+                case 'supervisor':
+                    window.location.href = 'supervisor_home_page.html';
+                    break;
+                default:
+                    window.location.href = 'supervisor_home_page.html';
+            }
+        }
+
+        // Initialize page
+        document.addEventListener('DOMContentLoaded', function() {
+            // Wait a bit to ensure app.js is loaded
+            setTimeout(() => {
+                const currentUser = getCurrentUser();
+                if (!currentUser) {
+                    window.location.href = 'login.html';
+                    return;
+                }
+
+                if (!evaluationType || !targetId) {
+                    showToast('Invalid evaluation session', 'danger');
+                    setTimeout(goBack, 2000);
+                    return;
+                }
+
+                document.getElementById('currentUser').textContent = currentUser.name;
+                loadEmployeeInfo();
+                loadQuestions();
+                // populate with saved values (if any) after questions rendered
+                setTimeout(populateFromSaved, 50);
+            }, 100);
+
+            // Set up form submission
+            document.getElementById('evaluationForm').addEventListener('submit', function(e) {
+                e.preventDefault();
+                saveSupervisorEvaluation();
+            });
+        });
+
+        function saveSupervisorEvaluation() {
+            if (!targetEmployee) {
+                showToast('Invalid target for evaluation', 'danger');
+                return;
+            }
+
+            // collect ratings and comments
+            const answers = {};
+            const comments = {};
+            const ratings = {};
+            const questionsCount = 8; // keep in sync with questions defined above
+            for (let i = 0; i < questionsCount; i++) {
+                const sel = document.getElementById('rating' + i);
+                const cEl = document.getElementById('comment' + i);
+                ratings['rating' + i] = sel ? sel.value : null;
+                comments['comment' + i] = cEl ? cEl.value.trim() : '';
+                answers['answer' + i] = '';
+            }
+
+            const overallReason = document.getElementById('overallReason')?.value || '';
+
+            // persist into canonical evaluations array
+            const evaluations = getEvaluations();
+            let record = evaluations.find(ev => ev.id === targetEmployee.id);
+            if (!record) {
+                // create a minimal record if missing
+                record = {
+                    id: targetEmployee.id,
+                    name: targetEmployee.name,
+                    email: targetEmployee.email,
+                    role: targetEmployee.role,
+                    department: targetEmployee.department
+                };
+                evaluations.push(record);
+            }
+
+            record.supervisorEvaluation = {
+                evaluatorId: getCurrentUser()?.id || null,
+                answers,
+                comments,
+                ratings,
+                reason: overallReason,
+                completed: true,
+                timestamp: new Date().toISOString()
+            };
+
+            saveEvaluations(evaluations);
+            showToast('Supervisor evaluation saved', 'success');
+            // go back to manager home
+            setTimeout(() => { window.location.href = 'manager_home_page.html'; }, 700);
+        }
+    </script>
+</body>
+</html>
