@@ -1561,7 +1561,7 @@ function saveEvaluation() {
                 window.location.href = 'manager_home_page.html';
                 break;
             case 'supervisor':
-                window.location.href = 'supervisor_home_page.html';
+                window.location.href = 'supervisorrr_home_page.html';
                 break;
             case 'hr':
                 window.location.href = 'hr_dashboard.html';
