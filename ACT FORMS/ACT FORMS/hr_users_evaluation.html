@@ -108,12 +108,9 @@
           </select>
         </div>
         <div class="filter-group">
-          <label class="filter-label">Filter by Status</label>
-          <select id="statusFilter" class="form-select" onchange="filterTables()">
-            <option value="All">All Status</option>
-            <option value="Registered">Registered</option>
-            <option value="Validated">Validated</option>
-            <option value="Not Validated">Not Validated</option>
+          <label class="filter-label">Filter by Department</label>
+          <select id="departmentFilter" class="form-select" onchange="filterTables()">
+            <option value="All">All Departments</option>
           </select>
         </div>
         <div class="filter-group">
@@ -145,7 +142,7 @@
                       <th>Full Name</th>
                       <th>Email</th>
                       <th>Phone</th>
-                      <th>Status</th>
+                      <th>Department</th>
                     </tr>
               </thead>
               <tbody></tbody>
@@ -174,7 +171,7 @@
                       <th>Full Name</th>
                       <th>Email</th>
                       <th>Phone</th>
-                      <th>Status</th>
+                      <th>Department</th>
                     </tr>
               </thead>
               <tbody></tbody>
@@ -203,7 +200,7 @@
                       <th>Full Name</th>
                       <th>Email</th>
                       <th>Phone</th>
-                      <th>Status</th>
+                      <th>Department</th>
                     </tr>
               </thead>
               <tbody></tbody>
@@ -275,7 +272,9 @@
 
       let empCount = 0, mgrCount = 0, hrCount = 0;
 
+      const deptSet = new Set();
       users.forEach(u => {
+        if (u && u.department) deptSet.add(u.department);
   const roleLabel = u.role ? (u.role.toLowerCase() === 'hr' ? 'HR' : u.role.charAt(0).toUpperCase() + u.role.slice(1)) : '';
         // decide badge color similar to hr_all_users.html
         let badgeClass = 'badge bg-primary';
@@ -309,13 +308,29 @@
 
       const empEl = document.getElementById('empCount');
       if (empEl) empEl.textContent = empCount;
-      document.getElementById('mgrCount').textContent = mgrCount;
-      document.getElementById('hrCount').textContent = hrCount;
+      const mgrEl = document.getElementById('mgrCount');
+      if (mgrEl) mgrEl.textContent = mgrCount;
+      const hrEl = document.getElementById('hrCount');
+      if (hrEl) hrEl.textContent = hrCount;
+
+      try {
+        const deptSelect = document.getElementById('departmentFilter');
+        if (deptSelect) {
+          while (deptSelect.options.length > 1) deptSelect.remove(1);
+          Array.from(deptSet).sort().forEach(d => {
+            const opt = document.createElement('option');
+            opt.value = d;
+            opt.text = d;
+            deptSelect.add(opt);
+          });
+        }
+      } catch (_) {}
     }
 
     function filterTables() {
       const roleFilter = document.getElementById('roleFilter').value;
-      const statusFilter = document.getElementById('statusFilter').value;
+      const deptSelect = document.getElementById('departmentFilter');
+      const deptFilter = deptSelect ? deptSelect.value : 'All';
       const searchText = document.getElementById('searchInput').value.toLowerCase();
 
       const tables = document.querySelectorAll('table');
@@ -324,12 +339,14 @@
           rows.forEach(row => {
               const roleEl = row.querySelector('.role-badge');
               const role = roleEl ? roleEl.textContent : '';
+              const deptCell = row.cells && row.cells.length >= 6 ? row.cells[5].textContent.trim() : '';
               const text = row.textContent.toLowerCase();
 
               const roleMatch = roleFilter === 'All' || role.toLowerCase() === roleFilter.toLowerCase();
+              const deptMatch = deptFilter === 'All' || (deptCell && deptCell.toLowerCase() === deptFilter.toLowerCase());
               const searchMatch = !searchText || text.includes(searchText);
 
-              row.style.display = (roleMatch && searchMatch) ? '' : 'none';
+              row.style.display = (roleMatch && deptMatch && searchMatch) ? '' : 'none';
             });
       });
     }
