@@ -932,10 +932,10 @@ function initializeApp() {
     
     // Check authentication on protected pages
     const protectedPages = [
-        'employee-home.html',
-        'manager-home.html',
-        'supervisor-home.html',
-        'hr-dashboard.html'
+        'employee_home_page.html',
+        'manager_home_page.html',
+        'supervisorrr_home_page.html',
+        'hr_dashboard.html'
     ];
     
     const currentPage = window.location.pathname.split('/').pop();
@@ -1097,17 +1097,17 @@ function startManagerEvaluation(employeeId) {
 
 // Supervisor Page Functions
 function viewManagerList() {
-    window.location.href = 'supervisor_manager_list.html';
+    window.location.href = 'maneger_supervisor_list.html';
 }
 
 function viewEmployeeListSupervisor() {
-    window.location.href = 'supervisor_employee_list.html';
+    window.location.href = 'supervisorrr_employee_list.html';
 }
 
 function startSupervisorEvaluation(targetId) {
     localStorage.setItem('evaluationType', 'supervisor');
     localStorage.setItem('evaluationTarget', targetId);
-    window.location.href = 'supervisor_evaluation_page.html';
+    window.location.href = 'supervisorrr_evaluation_page.html';
 }
 
 // HR Dashboard Functions
@@ -1561,7 +1561,7 @@ function saveEvaluation() {
                 window.location.href = 'manager_home_page.html';
                 break;
             case 'supervisor':
-                window.location.href = 'supervisor_home_page.html';
+                window.location.href = 'supervisorrr_home_page.html';
                 break;
             case 'hr':
                 window.location.href = 'hr_dashboard.html';
@@ -2132,20 +2132,32 @@ document.addEventListener('DOMContentLoaded', function() {
   filterTable();
 });
 
-document.getElementById('email').addEventListener('blur', function() {
-  if (this.value && !isValidEmail(this.value)) {
-    this.setCustomValidity('Please enter a valid email address');
-  } else {
-    this.setCustomValidity('');
+// Safely bind field validators if fields exist on the current page
+(function() {
+  const emailEl = document.getElementById('email');
+  if (emailEl) {
+    emailEl.addEventListener('blur', function() {
+      if (this.value && !isValidEmail(this.value)) {
+        this.setCustomValidity('Please enter a valid email address');
+      } else {
+        this.setCustomValidity('');
+      }
+    });
   }
-});
 
-document.getElementById('username').addEventListener('blur', function() {
-  this.setCustomValidity('');
-});
+  const usernameEl = document.getElementById('username');
+  if (usernameEl) {
+    usernameEl.addEventListener('blur', function() {
+      this.setCustomValidity('');
+    });
+  }
 
-document.getElementById('phone').addEventListener('input', function() {
-  let value = this.value.replace(/\D/g, '');
-  if (value.length > 11) value = value.slice(0, 11);
-  this.value = value;
-});
+  const phoneEl = document.getElementById('phone');
+  if (phoneEl) {
+    phoneEl.addEventListener('input', function() {
+      let value = this.value.replace(/\D/g, '');
+      if (value.length > 11) value = value.slice(0, 11);
+      this.value = value;
+    });
+  }
+})();

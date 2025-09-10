@@ -275,7 +275,7 @@
         }
 
         function goBack() {
-            window.location.href = 'supervisor_manager_list.html';
+            window.location.href = 'maneger_supervisor_list.html';
         }
 
         let isEditing = false;
@@ -364,7 +364,7 @@
 
                 if (!localStorage.getItem('evaluationTarget')) {
                     if (window.showToast) showToast('Invalid evaluation session', 'danger');
-                    setTimeout(() => { window.location.href = 'supervisor_manager_list.html'; }, 800);
+                    setTimeout(() => { window.location.href = 'maneger_supervisor_list.html'; }, 800);
                     return;
                 }
 

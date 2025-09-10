@@ -38,10 +38,10 @@
 - `manager_evaluation_page.html` - صفحة تقييم المدير
 
 ### صفحات المشرف
-- `supervisor_home_page.html` - لوحة تحكم المشرف
-- `supervisor_manager_list.html` - قائمة مديري المشرف
-- `supervisor_employee_list.html` - قائمة موظفي المشرف
-- `supervisor_evaluation_page.html` - صفحة تقييم المشرف
+- `supervisorrr_home_page.html` - لوحة تحكم المشرف
+- `maneger_supervisor_list.html` - قائمة مديري المشرف
+- `supervisorrr_employee_list.html` - قائمة موظفي المشرف
+- `supervisorrr_evaluation_page.html` - صفحة تقييم المشرف
 
 ### صفحات الموارد البشرية
 - `hr_dashboard.html` - لوحة تحكم الموارد البشرية
